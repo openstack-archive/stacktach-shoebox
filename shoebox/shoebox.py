@@ -68,13 +68,28 @@ class SizeRollChecker(RollChecker):
 
 
 class RollManager(object):
-    def __init__(self, filename_template, roll_checker):
+    def __init__(self, directory=".", filename_template, roll_checker):
         self.filename_template = filename_template
         self.roll_checker = roll_checker
+        self.active_archive = None
+        self.directory = directory
+        
+    def get_active_archive(self):
+        if not self.active_archive:
+            filename = self.filename_template
+            self.active_archive = self.archive_class(filename)
+
+        return self.active_archive
 
 
 class ReadingRollManager(RollManager):
-     def read_block(self):
+
+    def __init__(self, filename_template, roll_checker):
+        super(ReadingRollManager, self).__init__(filename_template, 
+                                                 roll_checker)
+        self.archive_class = ArchiveReader
+
+    def read_block(self):
         pass
 
     def read_header(self):
@@ -85,19 +100,30 @@ class ReadingRollManager(RollManager):
 
 
 class WritingRollManager(RollManager):
+    def __init__(self, filename_template, roll_checker):
+        super(ReadingRollManager, self).__init__(filename_template, 
+                                                 roll_checker)
+        self.archive_class = ArchiveWriter
+
     def write(self, payload):
-        pass
+        a = self.get_active_archive()
+        a.write(payload)
+        if a._should_roll_archive():
+            self._roll_archive()
 
 
 class ArchiveWriter(object):
     """The active Archive for appending.
     """
     def __init__(self, filename):
-        pass
+        self._handle = open(filename, "wb+")
 
     def write(self, payload):
         pass
 
+    def _should_roll_archive(self):
+        return False
+        
 
 class ArchiveReader(object):
     """The active Archive for consuming.
