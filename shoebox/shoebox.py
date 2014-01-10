@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+
 """Binary data archiving library.
 
 Data is written in the following format:
@@ -48,38 +50,58 @@ from, and in which order, if the filename is templated?
 
 
 class RollChecker(object):
-    pass
+    def start(self, archive):
+        pass
+
+    def check(self, archive):
+        pass
 
 
 class TimeRollChecker(RollChecker):
-    def start(self, file_handle):
-        pass
+    def __init__(self, timedelta):
+        self.timedelta = timedelta
 
-    def check(self, file_handle):
-        pass
+    def start(self, archive):
+        self.start_time = datetime.datetime.utcnow()
+        self.end_time = self.start_time + self.timedelta
+
+    def check(self, archive):
+        return datetime.datetime.utcnow() >= self.end_time
 
 
 class SizeRollChecker(RollChecker):
-    def start(self, file_handle):
-        pass
+    def __init__(self, size_in_gb):
+        self.size_in_gb = size_in_gb
 
-    def check(self, file_handle):
-        pass
+    def check(self, archive):
+        size = archive._get_file_handle().tell()
+        return size / 1073741824 > self.size_in_gb
 
 
 class RollManager(object):
-    def __init__(self, directory=".", filename_template, roll_checker):
+    def __init__(self, filename_template, roll_checker, directory="."):
         self.filename_template = filename_template
         self.roll_checker = roll_checker
-        self.active_archive = None
         self.directory = directory
+        self.active_archive = None
+
+    def _make_filename(self):
+        now = datetime.datetime.utcnow()
+        return now.strftime(self.filename_template)
         
     def get_active_archive(self):
         if not self.active_archive:
-            filename = self.filename_template
+            filename = self._make_filename()
             self.active_archive = self.archive_class(filename)
+            self.roll_checker.start(self.active_archive)
 
         return self.active_archive
+
+    def _should_roll_archive(self):
+        return False
+
+    def _roll_archive(self):
+        pass
 
 
 class ReadingRollManager(RollManager):
@@ -108,21 +130,28 @@ class WritingRollManager(RollManager):
     def write(self, payload):
         a = self.get_active_archive()
         a.write(payload)
-        if a._should_roll_archive():
+        if self._should_roll_archive(a):
             self._roll_archive()
+
+
+class Archive(object):
+    def __init__(self):
+        self._handle = None
+
+    def get_file_handle(self):
+        return self._handle
 
 
 class ArchiveWriter(object):
     """The active Archive for appending.
     """
     def __init__(self, filename):
+        super(ArchiveWriter, self).__init__(self)
         self._handle = open(filename, "wb+")
 
     def write(self, payload):
         pass
 
-    def _should_roll_archive(self):
-        return False
         
 
 class ArchiveReader(object):
