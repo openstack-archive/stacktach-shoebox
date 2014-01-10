@@ -48,6 +48,10 @@ TODO: How will the ReadingRollManager know which files to read
 from, and in which order, if the filename is templated?
 """
 
+def now():
+    """Broken out for testing."""
+    return datetime.datetime.utcnow()
+
 
 class RollChecker(object):
     def start(self, archive):
@@ -62,11 +66,11 @@ class TimeRollChecker(RollChecker):
         self.timedelta = timedelta
 
     def start(self, archive):
-        self.start_time = datetime.datetime.utcnow()
+        self.start_time = now()
         self.end_time = self.start_time + self.timedelta
 
     def check(self, archive):
-        return datetime.datetime.utcnow() >= self.end_time
+        return now() >= self.end_time
 
 
 class SizeRollChecker(RollChecker):
@@ -75,7 +79,7 @@ class SizeRollChecker(RollChecker):
 
     def check(self, archive):
         size = archive._get_file_handle().tell()
-        return size / 1073741824 > self.size_in_gb
+        return size / 1073741824 >= self.size_in_gb
 
 
 class RollManager(object):
@@ -86,9 +90,9 @@ class RollManager(object):
         self.active_archive = None
 
     def _make_filename(self):
-        now = datetime.datetime.utcnow()
+        now = now()
         return now.strftime(self.filename_template)
-        
+
     def get_active_archive(self):
         if not self.active_archive:
             filename = self._make_filename()
@@ -107,7 +111,7 @@ class RollManager(object):
 class ReadingRollManager(RollManager):
 
     def __init__(self, filename_template, roll_checker):
-        super(ReadingRollManager, self).__init__(filename_template, 
+        super(ReadingRollManager, self).__init__(filename_template,
                                                  roll_checker)
         self.archive_class = ArchiveReader
 
@@ -123,7 +127,7 @@ class ReadingRollManager(RollManager):
 
 class WritingRollManager(RollManager):
     def __init__(self, filename_template, roll_checker):
-        super(ReadingRollManager, self).__init__(filename_template, 
+        super(ReadingRollManager, self).__init__(filename_template,
                                                  roll_checker)
         self.archive_class = ArchiveWriter
 
@@ -152,7 +156,7 @@ class ArchiveWriter(object):
     def write(self, payload):
         pass
 
-        
+
 
 class ArchiveReader(object):
     """The active Archive for consuming.
