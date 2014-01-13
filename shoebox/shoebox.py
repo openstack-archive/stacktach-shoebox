@@ -90,8 +90,8 @@ class RollManager(object):
         self.active_archive = None
 
     def _make_filename(self):
-        now = now()
-        return now.strftime(self.filename_template)
+        f = now().strftime(self.filename_template)
+        return f.replace(" ", "_")
 
     def get_active_archive(self):
         if not self.active_archive:
@@ -110,9 +110,9 @@ class RollManager(object):
 
 class ReadingRollManager(RollManager):
 
-    def __init__(self, filename_template, roll_checker):
+    def __init__(self, filename_template, roll_checker, directory="."):
         super(ReadingRollManager, self).__init__(filename_template,
-                                                 roll_checker)
+                                                 roll_checker, directory)
         self.archive_class = ArchiveReader
 
     def read_block(self):
@@ -126,9 +126,9 @@ class ReadingRollManager(RollManager):
 
 
 class WritingRollManager(RollManager):
-    def __init__(self, filename_template, roll_checker):
-        super(ReadingRollManager, self).__init__(filename_template,
-                                                 roll_checker)
+    def __init__(self, filename_template, roll_checker, directory="."):
+        super(WritingRollManager, self).__init__(filename_template,
+                                                 roll_checker, directory)
         self.archive_class = ArchiveWriter
 
     def write(self, payload):
@@ -139,18 +139,19 @@ class WritingRollManager(RollManager):
 
 
 class Archive(object):
-    def __init__(self):
+    def __init__(self, filename):
         self._handle = None
+        self.filename = filename
 
     def get_file_handle(self):
         return self._handle
 
 
-class ArchiveWriter(object):
+class ArchiveWriter(Archive):
     """The active Archive for appending.
     """
     def __init__(self, filename):
-        super(ArchiveWriter, self).__init__(self)
+        super(ArchiveWriter, self).__init__(filename)
         self._handle = open(filename, "wb+")
 
     def write(self, payload):
@@ -158,11 +159,11 @@ class ArchiveWriter(object):
 
 
 
-class ArchiveReader(object):
+class ArchiveReader(Archive):
     """The active Archive for consuming.
     """
     def __init__(self, filename):
-        pass
+        super(ArchiveReader, self).__init__(filename)
 
     def read_block(self):
         pass

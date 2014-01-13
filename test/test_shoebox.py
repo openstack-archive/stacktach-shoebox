@@ -50,4 +50,22 @@ class TestRollChecker(unittest.TestCase):
 
 
 class TestRollManager(unittest.TestCase):
-    pass  # Next ...
+    def test_make_filename(self):
+        filename_template = "filename_%c"
+        now = datetime.datetime(day=1, month=2, year=2014,
+                                hour=10, minute=11, second=12)
+        x = shoebox.RollManager("filename_%c.dat", None)
+
+        with mock.patch.object(shoebox, "now") as dt:
+            dt.return_value = now
+            filename = x._make_filename()
+            self.assertEqual(filename, "filename_Sat_Feb__1_10:11:12_2014.dat")
+
+class TestWritingRollManager(unittest.TestCase):
+    def test_get_active_archive(self):
+        roll_checker = mock.Mock()
+        filename_template = "filename_%c.dat"
+        x = shoebox.WritingRollManager(filename_template, roll_checker)
+        archive = x.get_active_archive()
+        self.assertTrue(isinstance(archive, shoebox.ArchiveWriter))
+        self.assertTrue(roll_checker.start.called)
