@@ -55,10 +55,17 @@ def now():
 
 class RollChecker(object):
     def start(self, archive):
+        """Called when a new archive is selected."""
         pass
 
     def check(self, archive):
+        """Should the current archive roll?"""
         pass
+
+
+class NeverRollChecker(RollChecker):
+    def check(self, archive):
+        return False
 
 
 class TimeRollChecker(RollChecker):
@@ -102,7 +109,7 @@ class RollManager(object):
         return self.active_archive
 
     def _should_roll_archive(self):
-        return False
+        return self.roll_checker.check(self.active_archive)
 
     def _roll_archive(self):
         pass
@@ -134,7 +141,7 @@ class WritingRollManager(RollManager):
     def write(self, payload):
         a = self.get_active_archive()
         a.write(payload)
-        if self._should_roll_archive(a):
+        if self._should_roll_archive():
             self._roll_archive()
 
 
@@ -156,7 +163,6 @@ class ArchiveWriter(Archive):
 
     def write(self, payload):
         pass
-
 
 
 class ArchiveReader(Archive):

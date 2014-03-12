@@ -69,3 +69,27 @@ class TestWritingRollManager(unittest.TestCase):
         archive = x.get_active_archive()
         self.assertTrue(isinstance(archive, shoebox.ArchiveWriter))
         self.assertTrue(roll_checker.start.called)
+
+    def test_write_always_roll(self):
+        roll_checker = mock.Mock()
+        roll_checker.check.return_value = True
+        x = shoebox.WritingRollManager("template", roll_checker)
+        with mock.patch.object(x, "_roll_archive") as ra:
+            x.write("payload")
+            self.assertTrue(ra.called)
+
+    def test_write_never_roll(self):
+        roll_checker = mock.Mock()
+        roll_checker.check.return_value = False
+        x = shoebox.WritingRollManager("template", roll_checker)
+        with mock.patch.object(x, "_roll_archive") as ra:
+            x.write("payload")
+            self.assertFalse(ra.called)
+
+class TestWriting(unittest.TestCase):
+    def test_write(self):
+        roll_checker = shoebox.NeverRollChecker()
+        x = shoebox.WritingRollManager("template_%s", roll_checker)
+
+        for index in range(10):
+            x.write("payload_%d" % index)
