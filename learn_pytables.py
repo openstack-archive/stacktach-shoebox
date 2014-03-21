@@ -31,7 +31,7 @@ for i in xrange(10):
     for k, v in make_notification():
         row['key'] = k
         row['value'] = v
-    row.append()
+        row.append()
 
 notification.flush()
 
