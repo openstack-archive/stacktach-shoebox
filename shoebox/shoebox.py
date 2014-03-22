@@ -14,24 +14,33 @@
 # limitations under the License.
 
 import datetime
+import struct
 
 """Binary data archiving library.
 
 Data is written in the following format:
 
-[HEADER]
-[PAYLOAD]
-[FOOTER]
+[ENTRY] =
+    <START-OF-BLOCK> byte     # 0x05
+    <BLOCK-TYPE> long         # new versions get new block-types
+    <CRC> ulong
+    <SIZE> long
 
-where:
-    [HEADER] =
-        [START-OF-BLOCK]
-        [BLOCK-TYPE]
-        [SIZE]
+[PAYLOAD] =
+    <START-OF-PAYLOAD> byte     # 0x06
+    <RECORD_COUNT> int
+    [RECORD, RECORD, ...]
 
-    [FOOTER] =
-        [CRC]
-        [END-OF-BLOCK]
+[RECORD] = 
+    <SIZE> long
+    <KEY> varstr (%s)
+    <TYPE> int
+    <UNION>
+        <BOOLEAN>
+        <INT>
+        <FLOAT>
+        <DATETIME>
+        <STRING>
 
 There are ArchiveReaders and ArchiveWriters which are managed
 by RollManager. The RollManager opens and closes Archivers as
@@ -162,6 +171,7 @@ class ArchiveWriter(Archive):
         self._handle = open(filename, "wb+")
 
     def write(self, payload):
+
         pass
 
 

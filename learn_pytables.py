@@ -4,8 +4,8 @@ import tables
 
 
 class KeyValue(tables.IsDescription):
-    key = tables.StringCol(itemsize=22, dflt=" ", pos=0)
-    value = tables.StringCol(itemsize=22, dflt=" ", pos=0)
+    key = tables.StringCol(itemsize=250, dflt=" ", pos=0)
+    value = tables.VLStringAtom() # StringCol(itemsize=22, dflt=" ", pos=0)
 
 
 def make_notification():
@@ -23,7 +23,9 @@ fileh = tables.open_file("storeage.h5", mode = "w")
 root = fileh.root
 
 notifications = fileh.create_group(root, "notifications")
-notification = fileh.create_table(notifications, "notification", KeyValue)
+notification = fileh.create_table(notifications, "notification", 
+                                  tables.StringCol(itemsize=250, dflt=" ", pos=0))
+vlarray = fileh.createVLArray(notifications, 'vlarray8', tables.VLStringAtom(), "Variable Length String")
 
 row = notification.row
 
