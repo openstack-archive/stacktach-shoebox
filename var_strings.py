@@ -17,16 +17,37 @@ def handle_datetime(obj):
 def InvalidVersion(Exception):
     pass
 
+
 def OutOfSync(Exception):
     pass
 
+
 BOR_MAGIC_NUMBER = 0x69867884
 
-class Version1(object):
-    # Version 1 SCHEMA
-    # ----------------
+
+class Version0(object):
+    # Preamble ... same for all versions.
     # i = 0x69867884  (EVNT)
     # h = version
+
+    def __init__(self):
+        self.preamble_schema = "ih"
+        self.preamble_size = struct.calcsize(self.preamble_schema)
+
+    def make_preamble(self, version):
+        return struct.pack(self.preamble_schema, BOR_MAGIC_NUMBER, version)
+
+    def load_preamble(self, file_handle):
+        raw = file_handle.read(self.preamble_size)
+        header = struct.unpack(self.preamble_schema, raw)
+        if header[0] != BOR_MAGIC_NUMBER:
+            raise OutOfSync()
+        return header[1]
+
+
+class Version1(Version0):
+    # Version 1 SCHEMA
+    # ----------------
     # i = metadata block length
     # i = raw notification block length
     # i = 0x00000000 EOR
@@ -44,7 +65,7 @@ class Version1(object):
     #--------
     # With above Event and Metadata
     #
-    # Header schema: "ihiii"
+    # Header schema: "iii"
     # Metadata length: 119
     # Raw notification length: 201
     # Metadata = 6 strings (3 key-value pairs)
@@ -59,7 +80,8 @@ class Version1(object):
     #                    - 197
 
     def __init__(self):
-        self.header_schema = "ihiii"
+        super(Version1, self).__init__()
+        self.header_schema = "iii"
         self.header_size = struct.calcsize(self.header_schema)
 
     def pack(self, notification, metadata):
@@ -84,22 +106,21 @@ class Version1(object):
 
         metadata = struct.pack(metadata_schema, *metadata_values)
 
-        header = struct.pack(self.header_schema, BOR_MAGIC_NUMBER, 1,
+        header = struct.pack(self.header_schema,
                              struct.calcsize(metadata_schema),
                              struct.calcsize(raw_block_schema), 0)
 
-        return (header, metadata, raw_block)
+        preamble = self.make_preamble(1)
+        return (preamble, header, metadata, raw_block)
 
     def unpack(self, file_handle):
         header_bytes = file_handle.read(self.header_size)
         header = struct.unpack(self.header_schema, header_bytes)
 
-        if header[0] != BOR_MAGIC_NUMBER:
-            raise OutOfSync()
-        if header[1] != 1:
-            raise InvalidVersion("Expected V1, got V%d" % header[1])
+        if header[2] != 0:
+            raise OutOfSync("Didn't find 0 EOR marker.")
 
-        metadata_bytes = file_handle.read(header[2])
+        metadata_bytes = file_handle.read(header[0])
         num_strings = struct.unpack_from("i", metadata_bytes)
         offset = struct.calcsize("i")
         lengths = num_strings[0] / 2
@@ -114,7 +135,7 @@ class Version1(object):
         metadata = dict((key_values[n], key_values[n+1])
                         for n in range(len(key_values))[::2])
 
-        raw = file_handle.read(header[3])
+        raw = file_handle.read(header[1])
         raw_len = struct.unpack_from("i", raw)
         offset = struct.calcsize("i")
         raw_json = struct.unpack_from("%ds" % raw_len[0], raw, offset=offset)
@@ -140,35 +161,38 @@ def pack_notification(notification, metadata, version=CURRENT_VERSION):
     return version_handler.pack(notification, metadata)
 
 
-def unpack_notification(file_handle, version=CURRENT_VERSION):
+def unpack_notification(file_handle):
+    v0 = Version0()
+    version = v0.load_preamble(file_handle)
     version_handler = get_version_handler(version)
     return version_handler.unpack(file_handle)
 
-event = {"event_type": "nova.compute.run_instance.start",
-         "generated": datetime.datetime.utcnow(),
-         "request_id": "req-1234abcd5678efgh",
-         "source": "n-compute-1973",
-         "payload": {
-            "foo": 123,
-            "blah": "abc",
-            "zoo": False
-         }
-        }
 
-json_event = json.dumps(event, default=handle_datetime)
-metadata = {'request_id': event['request_id'],
-            'event_type': event['event_type'],
-            'source': event['source'],
-           }
+if __name__ == "__main__":
+    event = {"event_type": "nova.compute.run_instance.start",
+             "generated": datetime.datetime.utcnow(),
+             "request_id": "req-1234abcd5678efgh",
+             "source": "n-compute-1973",
+             "payload": {
+                "foo": 123,
+                "blah": "abc",
+                "zoo": False
+             }
+            }
 
+    json_event = json.dumps(event, default=handle_datetime)
+    metadata = {'request_id': event['request_id'],
+                'event_type': event['event_type'],
+                'source': event['source'],
+               }
 
-binary = pack_notification(json_event, metadata)
+    binary = pack_notification(json_event, metadata)
 
-with open("test.dat", "wb") as f:
-    for block in binary:
-        f.write(block)
+    with open("test.dat", "wb") as f:
+        for block in binary:
+            f.write(block)
 
-with open("test.dat", "rb") as f:
-    metadata, notification = unpack_notification(f)
-    print "Metadata:", metadata
-    print "Notification:", notification
+    with open("test.dat", "rb") as f:
+        metadata, notification = unpack_notification(f)
+        print "Metadata:", metadata
+        print "Notification:", notification
