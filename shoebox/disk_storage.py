@@ -166,33 +166,3 @@ def unpack_notification(file_handle):
     version = v0.load_preamble(file_handle)
     version_handler = get_version_handler(version)
     return version_handler.unpack(file_handle)
-
-
-if __name__ == "__main__":
-    event = {"event_type": "nova.compute.run_instance.start",
-             "generated": datetime.datetime.utcnow(),
-             "request_id": "req-1234abcd5678efgh",
-             "source": "n-compute-1973",
-             "payload": {
-                "foo": 123,
-                "blah": "abc",
-                "zoo": False
-             }
-            }
-
-    json_event = json.dumps(event, cls=DatetimeEncoder)
-    metadata = {'request_id': event['request_id'],
-                'event_type': event['event_type'],
-                'source': event['source'],
-               }
-
-    binary = pack_notification(json_event, metadata)
-
-    with open("test.dat", "wb") as f:
-        for block in binary:
-            f.write(block)
-
-    with open("test.dat", "rb") as f:
-        metadata, notification = unpack_notification(f)
-        print "Metadata:", metadata
-        print "Notification:", notification

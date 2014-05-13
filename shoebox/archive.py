@@ -21,7 +21,7 @@ class Archive(object):
         self._handle = None
         self.filename = filename
 
-    def get_file_handle(self):
+    def get_file_handle(self):  # pragma: no cover
         return self._handle
 
 

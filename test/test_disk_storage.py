@@ -119,4 +119,21 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(isinstance(disk_storage.get_version_handler(),
                                    disk_storage.Version1))
 
+    def test_pack_notification(self):
+        with mock.patch('shoebox.disk_storage.get_version_handler') as h:
+            fake_handler = mock.Mock()
+            h.return_value = fake_handler
+            disk_storage.pack_notification("payload", {})
+            self.assertTrue(fake_handler.pack.called)
 
+    def test_unpack_notification(self):
+        file_handle = mock.Mock()
+        file_handle.read.return_value = struct.pack("ih",
+                          disk_storage.BOR_MAGIC_NUMBER, 99)
+
+        with mock.patch('shoebox.disk_storage.get_version_handler') as h:
+            fake_handler = mock.Mock()
+            h.return_value = fake_handler
+            disk_storage.unpack_notification(file_handle)
+            h.assert_called_with(99)
+            self.assertTrue(fake_handler.unpack.called)

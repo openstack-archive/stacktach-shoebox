@@ -21,7 +21,7 @@ class RollChecker(object):
         """Called when a new archive is selected."""
         pass
 
-    def check(self, archive):
+    def check(self, archive):  # pragma: no cover
         """Should the current archive roll?"""
         pass
 
