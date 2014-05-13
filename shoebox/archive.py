@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import disk_storage
+
 
 class Archive(object):
     def __init__(self, filename):
@@ -28,10 +30,16 @@ class ArchiveWriter(Archive):
     """
     def __init__(self, filename):
         super(ArchiveWriter, self).__init__(filename)
+        self._open_file(filename)
+
+    def _open_file(self, filename):
+        # Broken out for testing.
         self._handle = open(filename, "wb+")
 
-    def write(self, payload):
-        pass
+    def write(self, metadata, payload):
+        binary = disk_storage.pack_notification(payload, metadata)
+        for block in binary:
+            self._handle.write(block)
 
 
 class ArchiveReader(Archive):
@@ -40,11 +48,5 @@ class ArchiveReader(Archive):
     def __init__(self, filename):
         super(ArchiveReader, self).__init__(filename)
 
-    def read_block(self):
-        pass
-
-    def read_header(self):
-        pass
-
-    def read_payload(self):
+    def read(self):
         pass

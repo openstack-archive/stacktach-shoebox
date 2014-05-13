@@ -44,29 +44,28 @@ class RollManager(object):
 
 
 class ReadingRollManager(RollManager):
-    def __init__(self, filename_template, roll_checker, directory="."):
+    def __init__(self, filename_template, roll_checker, directory=".",
+                 archive_class = archive.ArchiveReader):
         super(ReadingRollManager, self).__init__(filename_template,
                                                  roll_checker, directory)
-        self.archive_class = archive.ArchiveReader
+        self.archive_class = archive_class
 
-    def read_block(self):
-        pass
-
-    def read_header(self):
-        pass
-
-    def read_payload(self):
+    def read(self):
         pass
 
 
 class WritingRollManager(RollManager):
-    def __init__(self, filename_template, roll_checker, directory="."):
+    def __init__(self, filename_template, roll_checker, directory=".",
+                 archive_class = archive.ArchiveWriter):
         super(WritingRollManager, self).__init__(filename_template,
                                                  roll_checker, directory)
-        self.archive_class = archive.ArchiveWriter
+        self.archive_class = archive_class
 
-    def write(self, payload):
+    def write(self, metadata, payload):
+        """metadata is string:string dict.
+           payload must be encoded as string.
+        """
         a = self.get_active_archive()
-        a.write(payload)
+        a.write(metadata, payload)
         if self._should_roll_archive():
             self._roll_archive()
