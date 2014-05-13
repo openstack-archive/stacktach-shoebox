@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os.path
+
 import archive
 import utils
 
@@ -26,7 +28,8 @@ class RollManager(object):
 
     def _make_filename(self):
         f = utils.now().strftime(self.filename_template)
-        return f.replace(" ", "_")
+        f = f.replace(" ", "_")
+        return os.path.join(self.directory, f)
 
     def get_active_archive(self):
         if not self.active_archive:

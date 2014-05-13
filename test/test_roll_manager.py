@@ -18,7 +18,8 @@ class TestRollManager(unittest.TestCase):
         with mock.patch.object(utils, "now") as dt:
             dt.return_value = now
             filename = x._make_filename()
-            self.assertEqual(filename, "filename_Sat_Feb__1_10:11:12_2014.dat")
+            self.assertEqual(filename,
+                             "./filename_Sat_Feb__1_10:11:12_2014.dat")
 
 
 class FakeArchive(object):
