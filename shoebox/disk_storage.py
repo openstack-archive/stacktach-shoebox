@@ -3,22 +3,21 @@ import datetime
 import json
 import struct
 
-def handle_datetime(obj):
-    if isinstance(obj, datetime.datetime):
-        if obj.utcoffset() is not None:
-            obj = obj - obj.utcoffset()
-    millis = int(
-        calendar.timegm(obj.timetuple()) * 1000 +
-        obj.microsecond / 1000
-    )
-    return millis
+class DatetimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            if obj.utcoffset() is not None:
+                obj = obj - obj.utcoffset()
+            return int(calendar.timegm(obj.timetuple()) * 1000 +
+                         obj.microsecond / 1000)
+        return super(DatetimeEncoder, self).default(obj)
 
 
-def InvalidVersion(Exception):
+class InvalidVersion(Exception):
     pass
 
 
-def OutOfSync(Exception):
+class OutOfSync(Exception):
     pass
 
 
@@ -40,8 +39,9 @@ class Version0(object):
     def load_preamble(self, file_handle):
         raw = file_handle.read(self.preamble_size)
         header = struct.unpack(self.preamble_schema, raw)
+        print "raw", raw
         if header[0] != BOR_MAGIC_NUMBER:
-            raise OutOfSync()
+            raise OutOfSync("Expected Beginning of Record marker")
         return header[1]
 
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
              }
             }
 
-    json_event = json.dumps(event, default=handle_datetime)
+    json_event = json.dumps(event, cls=DatetimeEncoder)
     metadata = {'request_id': event['request_id'],
                 'event_type': event['event_type'],
                 'source': event['source'],
