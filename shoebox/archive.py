@@ -50,6 +50,12 @@ class ArchiveReader(Archive):
     """
     def __init__(self, filename):
         super(ArchiveReader, self).__init__(filename)
+        self._open_file(filename)
+
+    def _open_file(self, filename):
+        # Broken out for testing.
+        self._handle = open(filename, "rb")
 
     def read(self):
-        pass
+        # (metadata, payload)
+        return disk_storage.unpack_notification(self._handle)

@@ -13,10 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import fnmatch
+import os
 import os.path
 
 import archive
+import disk_storage
 import utils
+
+
+class NoMoreFiles(Exception):
+    pass
+
+
+class NoValidFile(Exception):
+    pass
 
 
 class ArchiveCallback(object):
@@ -30,34 +41,14 @@ class ArchiveCallback(object):
 
 
 class RollManager(object):
-    def __init__(self, filename_template, roll_checker, directory=".",
+    def __init__(self, filename_template, directory=".",
                  archive_class=None, archive_callback=None):
         self.filename_template = filename_template
-        self.roll_checker = roll_checker
         self.directory = directory
         self.active_archive = None
         self.archive_class = archive_class
         self.active_filename = None
         self.archive_callback = archive_callback
-
-    def _make_filename(self):
-        f = utils.now().strftime(self.filename_template)
-        f = f.replace(" ", "_")
-        f = f.replace("/", "_")
-        return os.path.join(self.directory, f)
-
-    def get_active_archive(self):
-        if not self.active_archive:
-            self.active_filename = self._make_filename()
-            self.active_archive = self.archive_class(self.active_filename)
-            if self.archive_callback:
-                self.archive_callback.on_open(self.active_filename)
-            self.roll_checker.start(self.active_archive)
-
-        return self.active_archive
-
-    def _should_roll_archive(self):
-        return self.roll_checker.check(self.active_archive)
 
     def _roll_archive(self):
         self.close()
@@ -73,17 +64,42 @@ class RollManager(object):
 
 
 class ReadingRollManager(RollManager):
-    def __init__(self, filename_template, roll_checker, directory=".",
+    def __init__(self, filename_template, directory=".",
                  archive_class = archive.ArchiveReader,
                  archive_callback=None):
-        super(ReadingRollManager, self).__init__(filename_template,
-                                                 roll_checker,
-                                                 directory=directory,
-                                                 archive_callback=event_callback,
-                                                 archive_class=archive_class)
+        super(ReadingRollManager, self).__init__(
+                                            filename_template,
+                                            directory=directory,
+                                            archive_callback=archive_callback,
+                                            archive_class=archive_class)
+        self.files_to_read = self._get_matching_files(directory,
+                                                      filename_template)
+
+    def _get_matching_files(self, directory, filename_template):
+        files = [os.path.join(directory, f)
+                    for f in os.listdir(self.directory)
+                        if os.path.isfile(os.path.join(directory, f))]
+        return sorted(fnmatch.filter(files, filename_template))
 
     def read(self):
-        pass
+        # (metadata, payload)
+        for x in range(3):  # 3 attempts to file a valid file.
+            a = self.get_active_archive()
+            try:
+                return a.read()
+            except disk_storage.EndOfFile:
+                self._roll_archive()
+        raise NoValidFile("Unable to find a valid file after 3 attempts")
+
+    def get_active_archive(self):
+        if not self.active_archive:
+            if not self.files_to_read:
+                raise NoMoreFiles()
+            self.active_filename = self.files_to_read.pop(0)
+            self.active_archive = self.archive_class(self.active_filename)
+            if self.archive_callback:
+                self.archive_callback.on_open(self.active_filename)
+        return self.active_archive
 
 
 class WritingRollManager(RollManager):
@@ -92,10 +108,10 @@ class WritingRollManager(RollManager):
                  archive_callback=None):
         super(WritingRollManager, self).__init__(
                                             filename_template,
-                                            roll_checker,
                                             directory=directory,
                                             archive_callback=archive_callback,
                                             archive_class=archive_class)
+        self.roll_checker = roll_checker
 
     def write(self, metadata, payload):
         """metadata is string:string dict.
@@ -105,3 +121,22 @@ class WritingRollManager(RollManager):
         a.write(metadata, payload)
         if self._should_roll_archive():
             self._roll_archive()
+
+    def _make_filename(self):
+        f = utils.now().strftime(self.filename_template)
+        f = f.replace(" ", "_")
+        f = f.replace("/", "_")
+        f = f.replace(":", "_")
+        return os.path.join(self.directory, f)
+
+    def get_active_archive(self):
+        if not self.active_archive:
+            self.active_filename = self._make_filename()
+            self.active_archive = self.archive_class(self.active_filename)
+            if self.archive_callback:
+                self.archive_callback.on_open(self.active_filename)
+            self.roll_checker.start(self.active_archive)
+        return self.active_archive
+
+    def _should_roll_archive(self):
+        return self.roll_checker.check(self.active_archive)

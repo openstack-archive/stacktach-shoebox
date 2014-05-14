@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import calendar
+import collections
 import datetime
 import decimal
 import json
@@ -48,3 +49,17 @@ class DateTimeEncoder(json.JSONEncoder):
                 obj = obj - obj.utcoffset()
             return str(dt_to_decimal(obj))
         return super(DateTimeEncoder, self).default(obj)
+
+
+# This is a hack for comparing structures load'ed from json
+# (which are always unicode) back to strings. It's used
+# for assertEqual() in the tests and is very slow and expensive.
+def unicode_to_string(data):
+    if isinstance(data, basestring):
+        return str(data)
+    elif isinstance(data, collections.Mapping):
+        return dict(map(unicode_to_string, data.iteritems()))
+    elif isinstance(data, collections.Iterable):
+        return type(data)(map(unicode_to_string, data))
+    else:
+        return data

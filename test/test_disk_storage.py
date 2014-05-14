@@ -63,7 +63,8 @@ class TestVersion1(unittest.TestCase):
         file_handle = mock.Mock()
         file_handle.read.side_effect = blocks
 
-        m, p = self.v1.unpack(file_handle)
+        m, jp = self.v1.unpack(file_handle)
+        p = json.loads(jp)
         self.assertEqual(metadata, m)
         self.assertEqual(payload, p)
 

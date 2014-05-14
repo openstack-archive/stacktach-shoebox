@@ -12,6 +12,10 @@ class OutOfSync(Exception):
     pass
 
 
+class EndOfFile(Exception):
+    pass
+
+
 BOR_MAGIC_NUMBER = 0x69867884
 
 
@@ -27,10 +31,14 @@ class Version0(object):
     def make_preamble(self, version):
         return struct.pack(self.preamble_schema, BOR_MAGIC_NUMBER, version)
 
+    def _check_eof(self, expected, actual):
+        if actual < expected:
+            raise EndOfFile()
+
     def load_preamble(self, file_handle):
         raw = file_handle.read(self.preamble_size)
+        self._check_eof(self.preamble_size, len(raw))
         header = struct.unpack(self.preamble_schema, raw)
-        print "raw", raw
         if header[0] != BOR_MAGIC_NUMBER:
             raise OutOfSync("Expected Beginning of Record marker")
         return header[1]
@@ -106,12 +114,14 @@ class Version1(Version0):
 
     def unpack(self, file_handle):
         header_bytes = file_handle.read(self.header_size)
+        self._check_eof(self.header_size, len(header_bytes))
         header = struct.unpack(self.header_schema, header_bytes)
 
         if header[2] != 0:
             raise OutOfSync("Didn't find 0 EOR marker.")
 
         metadata_bytes = file_handle.read(header[0])
+        self._check_eof(header[0], len(metadata_bytes))
         num_strings = struct.unpack_from("i", metadata_bytes)
         offset = struct.calcsize("i")
         lengths = num_strings[0] / 2
@@ -127,12 +137,11 @@ class Version1(Version0):
                         for n in range(len(key_values))[::2])
 
         raw = file_handle.read(header[1])
+        self._check_eof(header[1], len(raw))
         raw_len = struct.unpack_from("i", raw)
         offset = struct.calcsize("i")
-        raw_json = struct.unpack_from("%ds" % raw_len[0], raw, offset=offset)
-        notification = json.loads(raw_json[0])
-
-        return (metadata, notification)
+        jnot = struct.unpack_from("%ds" % raw_len[0], raw, offset=offset)
+        return (metadata, jnot[0])
 
 
 VERSIONS = {1: Version1()}
