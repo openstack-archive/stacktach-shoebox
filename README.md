@@ -68,3 +68,4 @@ For Reading:
         except roll_manager.NoMoreFiles:
             break
 
+Look at `test/integration/test_rolling.py` for a more complete example.
