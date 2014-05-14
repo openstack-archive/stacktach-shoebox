@@ -48,5 +48,5 @@ class SizeRollChecker(RollChecker):
         self.size_in_gb = size_in_gb
 
     def check(self, archive):
-        size = archive._get_file_handle().tell()
+        size = archive.get_file_handle().tell()
         return size / 1073741824 >= self.size_in_gb

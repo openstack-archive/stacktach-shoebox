@@ -40,11 +40,11 @@ class TestRollChecker(unittest.TestCase):
         x = roll_checker.SizeRollChecker(10)
 
         archive = mock.Mock()
-        archive._get_file_handle.return_value.tell.return_value = one_gig * 5
+        archive.get_file_handle.return_value.tell.return_value = one_gig * 5
         self.assertFalse(x.check(archive))
 
-        archive._get_file_handle.return_value.tell.return_value = one_gig * 10
+        archive.get_file_handle.return_value.tell.return_value = one_gig * 10
         self.assertTrue(x.check(archive))
 
-        archive._get_file_handle.return_value.tell.return_value = one_gig * 11
+        archive.get_file_handle.return_value.tell.return_value = one_gig * 11
         self.assertTrue(x.check(archive))

@@ -3,15 +3,6 @@ import datetime
 import json
 import struct
 
-class DatetimeEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            if obj.utcoffset() is not None:
-                obj = obj - obj.utcoffset()
-            return int(calendar.timegm(obj.timetuple()) * 1000 +
-                         obj.microsecond / 1000)
-        return super(DatetimeEncoder, self).default(obj)
-
 
 class InvalidVersion(Exception):
     pass

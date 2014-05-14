@@ -9,25 +9,6 @@ import dateutil.tz
 from shoebox import disk_storage
 
 
-class TestDiskStorage(unittest.TestCase):
-    def setUp(self):
-        self.handler = disk_storage.DatetimeEncoder()
-
-    def test_handle_datetime_non_datetime(self):
-        self.assertRaises(TypeError, self.handler.default, "text")
-
-    def test_handle_datetime(self):
-        now = datetime.datetime(day=1, month=2, year=2014,
-                                hour=10, minute=11, second=12)
-        self.assertEqual(1391249472000, self.handler.default(now))
-
-    def test_handle_datetime_offset(self):
-        now = datetime.datetime(day=1, month=2, year=2014,
-                                hour=10, minute=11, second=12,
-                                tzinfo=dateutil.tz.tzoffset(None, 4*60*60))
-        self.assertEqual(1391235072000, self.handler.default(now))
-
-
 class TestVersion0(unittest.TestCase):
     def setUp(self):
        self.v0 = disk_storage.Version0()

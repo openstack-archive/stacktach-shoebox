@@ -296,7 +296,7 @@ if __name__ == '__main__':
     now = datetime.datetime.utcnow()
     start = now
     nevents = 0
-    while nevents < 100:
+    while nevents < 10000:
         e = g.generate(now)
         if e:
             nevents += len(e)

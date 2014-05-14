@@ -13,9 +13,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import calendar
 import datetime
+import decimal
+import json
 
 
 def now():
     """Broken out for testing."""
     return datetime.datetime.utcnow()
+
+
+def dt_to_decimal(utc):
+    decimal.getcontext().prec = 30
+    return decimal.Decimal(str(calendar.timegm(utc.utctimetuple()))) + \
+           (decimal.Decimal(str(utc.microsecond)) /
+           decimal.Decimal("1000000.0"))
+
+
+def dt_from_decimal(dec):
+    if dec == None:
+        return "n/a"
+    integer = int(dec)
+    micro = (dec - decimal.Decimal(integer)) * decimal.Decimal(1000000)
+
+    daittyme = datetime.datetime.utcfromtimestamp(integer)
+    return daittyme.replace(microsecond=micro)
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            if obj.utcoffset() is not None:
+                obj = obj - obj.utcoffset()
+            return str(dt_to_decimal(obj))
+        return super(DateTimeEncoder, self).default(obj)
