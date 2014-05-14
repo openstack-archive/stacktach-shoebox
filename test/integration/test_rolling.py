@@ -101,3 +101,5 @@ class TestSizeRolling(unittest.TestCase):
                 self.assertEqual(orig_jpayload, jpayload)
             except roll_manager.NoMoreFiles:
                 break
+
+        self.assertEqual(0, len(vcallback.original_files))
