@@ -9,6 +9,15 @@ from shoebox import roll_manager
 from shoebox import utils
 
 
+class FakeArchive(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.data = []
+
+    def write(self, metadata, payload):
+        self.data.append((metadata, payload))
+
+
 class TestRollManager(unittest.TestCase):
     def test_make_filename(self):
         now = datetime.datetime(day=1, month=2, year=2014,
@@ -21,26 +30,32 @@ class TestRollManager(unittest.TestCase):
             self.assertEqual(filename,
                              "./filename_Sat_Feb__1_10:11:12_2014.dat")
 
+    def test_get_active_archive(self):
+        checker = mock.Mock()
+        callback = mock.Mock()
+        filename_template = "filename_%c.dat"
+        x = roll_manager.RollManager(filename_template, checker,
+                                     archive_callback=callback,
+                                     archive_class=FakeArchive)
+        with mock.patch("shoebox.archive.ArchiveWriter._open_file") as of:
+            arc = x.get_active_archive()
+            self.assertTrue(checker.start.called)
+            self.assertTrue(callback.on_open.called)
 
-class FakeArchive(object):
-    def __init__(self, filename):
-        self.filename = filename
-        self.data = []
-
-    def write(self, metadata, payload):
-        self.data.append((metadata, payload))
+    def test_close(self):
+        callback = mock.Mock()
+        checker = mock.Mock()
+        x = roll_manager.RollManager("template", checker,
+                                     archive_callback=callback)
+        x.active_archive = mock.Mock()
+        x.active_filename = "foo"
+        x.close()
+        self.assertIsNone(x.active_archive)
+        self.assertIsNone(x.active_filename)
+        self.assertTrue(callback.on_close.called)
 
 
 class TestWritingRollManager(unittest.TestCase):
-    def test_get_active_archive(self):
-        checker = mock.Mock()
-        filename_template = "filename_%c.dat"
-        x = roll_manager.WritingRollManager(filename_template, checker)
-        with mock.patch("shoebox.archive.ArchiveWriter._open_file") as of:
-            arc = x.get_active_archive()
-            self.assertTrue(isinstance(arc, archive.ArchiveWriter))
-            self.assertTrue(checker.start.called)
-
     def test_write_always_roll(self):
         checker = mock.Mock()
         checker.check.return_value = True
@@ -58,6 +73,14 @@ class TestWritingRollManager(unittest.TestCase):
         with mock.patch.object(x, "_roll_archive") as ra:
             x.write({}, "payload")
             self.assertFalse(ra.called)
+
+    def test_get_active_archive(self):
+        checker = mock.Mock()
+        filename_template = "filename_%c.dat"
+        x = roll_manager.WritingRollManager(filename_template, checker)
+        with mock.patch("shoebox.archive.ArchiveWriter._open_file") as of:
+            arc = x.get_active_archive()
+            self.assertTrue(isinstance(arc, archive.ArchiveWriter))
 
 
 class TestWriting(unittest.TestCase):

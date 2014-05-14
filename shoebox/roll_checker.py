@@ -44,9 +44,9 @@ class TimeRollChecker(RollChecker):
 
 
 class SizeRollChecker(RollChecker):
-    def __init__(self, size_in_gb):
-        self.size_in_gb = size_in_gb
+    def __init__(self, size_in_mb):
+        self.size_in_mb = size_in_mb
 
     def check(self, archive):
         size = archive.get_file_handle().tell()
-        return size / 1073741824 >= self.size_in_gb
+        return (size / 1048576) >= self.size_in_mb

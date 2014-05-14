@@ -24,6 +24,9 @@ class Archive(object):
     def get_file_handle(self):  # pragma: no cover
         return self._handle
 
+    def close(self):
+        self._handle.close()
+
 
 class ArchiveWriter(Archive):
     """The active Archive for appending.

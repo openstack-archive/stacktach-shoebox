@@ -100,8 +100,8 @@ class EventGenerator(object):
         # An operation will happen every so many milliseconds to
         # get our operations/sec. We call this a Tick.
         self.millisecond_per_tick = 1000.0 / float(operations_per_second)
-        print "Operation every %d ms (%.1f/sec)" % (self.millisecond_per_tick,
-                                                  operations_per_second)
+        #print "Operation every %d ms (%.1f/sec)" % (self.millisecond_per_tick,
+        #                                          operations_per_second)
         self.next_events = []  # priority queue
         self.instances_in_use = set()
 
@@ -129,15 +129,16 @@ class EventGenerator(object):
                 if idx == 0:
                     uuid = event['uuid'][-4:]
                     request = event['request_id'][-4:]
-                    if event['is_create']:
-                        print "CREATE:",
-                    if event['is_delete']:
-                        print "DELETE:",
-                    if event['is_update']:
-                        print "UPDATE:",
-                    print "U:%s R:%s" % (uuid, request),
-                    print "(%d of %d)" % (len(self.instances_in_use), \
-                          len(self.instances))
+                    if False:
+                        if event['is_create']:
+                            print "CREATE:",
+                        if event['is_delete']:
+                            print "DELETE:",
+                        if event['is_update']:
+                            print "UPDATE:",
+                        print "U:%s R:%s" % (uuid, request),
+                        print "(%d of %d)" % (len(self.instances_in_use), \
+                              len(self.instances))
                 # (when, event, is_first_event, is_last_event)
                 heapq.heappush(self.next_events,
                                     (when, event, idx==0, idx==len(action)-1))
@@ -161,7 +162,7 @@ class EventGenerator(object):
                     self.instances_in_use.add(uuid)
                 elif event['is_delete']:
                     self.instances_in_use.remove(uuid)
-            print "%s %40s U:%4s" % (' ' * 20, event['event'], uuid[-4:])
+            #print "%s %40s U:%4s" % (' ' * 20, event['event'], uuid[-4:])
             ready.append(event)
 
     def _get_action(self, now):
