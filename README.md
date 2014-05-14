@@ -3,9 +3,14 @@ shoebox
 
 binary data archiving library - supports uploading to object storage
 
+Json payloads and string:string metadata dicts are stored in local-disk
+binary files. The binary file format is versioned and tagged to allow
+for easy extension. 
+
 There are ArchiveReaders and ArchiveWriters which are managed
-by RollManager. "Roll" comes from "roll over". When does a file roll-over
-from one to the next? There is only one Archiver active at a time. 
+by the RollManager. "Roll" comes from "roll over". It controls when 
+roll-over occurs from one Archive to the next. There is only one 
+Archiver active at a time per RollManager. 
 
 The RollManager opens and closes Archivers as
 needed. "As needed" is determined by which RollChecker that was
@@ -20,20 +25,46 @@ storage locations.
 The RollChecker's have a reference to the current Archive so
 they can ask file-related questions (like "how big are you?")
 
+You can register callbacks with the RollManager for notifications
+on when new Archive files are opened or closed.
+
 Usage:
 
     # Make a roll checker of whatever strategy you choose.
-    checker = roll_checker.NeverRollChecker()  # one big file.
+    checker = roll_checker.SizeRollChecker(100)  # 100mb files
+
     # Make a roll manager for reading or writing. 
     # Give the filename template and the checker. 
     # (and an optional working directory for new files)
-    x = roll_manager.WritingRollManager("template_%s", checker)
-    # Write metadata and payload ...
-    for index in range(10):
-        x.write({"index": str(index)}, "payload_%d" % index)
+
+    # The %c in the template is per the python strptime method: 
+    # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior 
+
+    x = roll_manager.WritingRollManager("test_%c.events", checker)
+
+    # Write some metadata and payload ...
+    #
     # WritingRollManager.write(metadata, payload) where
     # metadata = string:string dict
     # payload = string of data. Most likely a json structure.
 
-TODO: How will the ReadingRollManager know which files to read
-from, and in which order, if the filename is templated?
+    # If the archive file grows beyond 100mb the old one
+    # will automatically close and a new one created.
+    for index in range(10):
+        x.write({"index": str(index)}, "payload_%d" % index)
+
+    x.close()
+
+For Reading:
+
+    # Read from all the event data files using wildcards ...
+    manager = roll_manager.ReadingRollManager("test_*.events")
+
+    # This will keep reading across all files in the archive
+    # until we reach the end.
+    while True:
+        try:
+            metadata, json_payload = manager.read()
+        except roll_manager.NoMoreFiles:
+            break
+
