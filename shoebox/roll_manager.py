@@ -30,16 +30,6 @@ class NoValidFile(Exception):
     pass
 
 
-class ArchiveCallback(object):
-    def on_open(self, filename):
-        """Called when an Archive is opened."""
-        pass
-
-    def on_close(self, filename):
-        """Called when an Archive is closed."""
-        pass
-
-
 class RollManager(object):
     def __init__(self, filename_template, directory=".",
                  archive_class=None, archive_callback=None):

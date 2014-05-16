@@ -5,13 +5,12 @@ import os
 import shutil
 import unittest
 
+import notigen
 
 from shoebox import disk_storage
 from shoebox import roll_checker
 from shoebox import roll_manager
 from shoebox import utils
-
-import test.integration.gen_events as egen
 
 
 TEMPDIR = "test_temp"
@@ -49,10 +48,6 @@ class TestSizeRolling(unittest.TestCase):
         shutil.rmtree(TEMPDIR, ignore_errors=True)
         os.mkdir(TEMPDIR)
 
-    def tearDown(self):
-        # shutil.rmtree(TEMPDIR)
-        pass
-
     def test_size_rolling(self):
         callback = ArchiveCallback()
 
@@ -62,7 +57,7 @@ class TestSizeRolling(unittest.TestCase):
                                                   TEMPDIR,
                                                   archive_callback=callback)
 
-        g = egen.EventGenerator(6000)
+        g = notigen.EventGenerator(6000)
         entries = []
         now = datetime.datetime.utcnow()
         while len(entries) < 10000:
