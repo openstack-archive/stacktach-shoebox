@@ -17,9 +17,10 @@ import fnmatch
 import os
 import os.path
 
+import notification_utils
+
 import archive
 import disk_storage
-import utils
 
 
 class NoMoreFiles(Exception):
@@ -113,7 +114,7 @@ class WritingRollManager(RollManager):
             self._roll_archive()
 
     def _make_filename(self):
-        f = utils.now().strftime(self.filename_template)
+        f = notification_utils.now().strftime(self.filename_template)
         f = f.replace(" ", "_")
         f = f.replace("/", "_")
         f = f.replace(":", "_")

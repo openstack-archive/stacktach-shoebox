@@ -5,12 +5,12 @@ import os
 import shutil
 import unittest
 
+import notification_utils
 import notigen
 
 from shoebox import disk_storage
 from shoebox import roll_checker
 from shoebox import roll_manager
-from shoebox import utils
 
 
 TEMPDIR = "test_temp"
@@ -70,7 +70,7 @@ class TestSizeRolling(unittest.TestCase):
                                 'uuid': event['uuid'],
                                 }
                     json_event = json.dumps(event,
-                                            cls=utils.DateTimeEncoder)
+                                        cls=notification_utils.DateTimeEncoder)
                     manager.write(metadata, json_event)
                     entries.append((metadata, json_event))
 

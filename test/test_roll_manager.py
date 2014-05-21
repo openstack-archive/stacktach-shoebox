@@ -3,10 +3,11 @@ import mock
 import os
 import unittest
 
+import notification_utils
+
 from shoebox import archive
 from shoebox import roll_checker
 from shoebox import roll_manager
-from shoebox import utils
 
 
 class FakeArchive(object):
@@ -72,7 +73,7 @@ class TestWritingRollManager(unittest.TestCase):
                                 hour=10, minute=11, second=12)
         x = roll_manager.WritingRollManager("filename_%c.dat", None)
 
-        with mock.patch.object(utils, "now") as dt:
+        with mock.patch.object(notification_utils, "now") as dt:
             dt.return_value = now
             filename = x._make_filename()
             self.assertEqual(filename,

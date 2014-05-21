@@ -2,8 +2,9 @@ import datetime
 import mock
 import unittest
 
+import notification_utils
+
 from shoebox import roll_checker
-from shoebox import utils
 
 
 class TestRollChecker(unittest.TestCase):
@@ -11,7 +12,7 @@ class TestRollChecker(unittest.TestCase):
         one_hour = datetime.timedelta(hours=1)
         x = roll_checker.TimeRollChecker(one_hour)
         now = datetime.datetime.utcnow()
-        with mock.patch.object(utils, 'now') as dt:
+        with mock.patch.object(notification_utils, 'now') as dt:
             dt.return_value = now
             x.start(None)
         self.assertEqual(x.start_time, now)
@@ -23,15 +24,15 @@ class TestRollChecker(unittest.TestCase):
         now = datetime.datetime.utcnow()
         x.start_time = now
         x.end_time = now + one_hour
-        with mock.patch.object(utils, 'now') as dt:
+        with mock.patch.object(notification_utils, 'now') as dt:
             dt.return_value = now + one_hour
             self.assertTrue(x.check(None))
 
-        with mock.patch.object(utils, 'now') as dt:
+        with mock.patch.object(notification_utils, 'now') as dt:
             dt.return_value = now
             self.assertFalse(x.check(None))
 
-        with mock.patch.object(utils, 'now') as dt:
+        with mock.patch.object(notification_utils, 'now') as dt:
             dt.return_value = now + one_hour - datetime.timedelta(seconds = 1)
             self.assertFalse(x.check(None))
 

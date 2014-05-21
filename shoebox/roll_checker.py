@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import utils
+import notification_utils
 
 
 class RollChecker(object):
@@ -36,11 +36,11 @@ class TimeRollChecker(RollChecker):
         self.timedelta = timedelta
 
     def start(self, archive):
-        self.start_time = utils.now()
+        self.start_time = notification_utils.now()
         self.end_time = self.start_time + self.timedelta
 
     def check(self, archive):
-        return utils.now() >= self.end_time
+        return notification_utils.now() >= self.end_time
 
 
 class SizeRollChecker(RollChecker):
