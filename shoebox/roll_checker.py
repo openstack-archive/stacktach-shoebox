@@ -13,10 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+
 import notification_utils
 
 
 class RollChecker(object):
+    def __init__(self, **kwargs):
+        pass
+
     def start(self, archive):
         """Called when a new archive is selected."""
         pass
@@ -32,8 +37,10 @@ class NeverRollChecker(RollChecker):
 
 
 class TimeRollChecker(RollChecker):
-    def __init__(self, timedelta):
-        self.timedelta = timedelta
+    def __init__(self, **kwargs):
+        super(TimeRollChecker, self).__init__()
+        minutes = int(kwargs.get('roll_minutes', 60))
+        self.timedelta = datetime.timedelta(minutes=minutes)
 
     def start(self, archive):
         self.start_time = notification_utils.now()
@@ -44,9 +51,10 @@ class TimeRollChecker(RollChecker):
 
 
 class SizeRollChecker(RollChecker):
-    def __init__(self, size_in_mb):
-        self.size_in_mb = size_in_mb
+    def __init__(self, **kwargs):
+        super(SizeRollChecker, self).__init__()
+        self.roll_size_mb = int(kwargs.get('roll_size_mb', 1))
 
     def check(self, archive):
         size = archive.get_file_handle().tell()
-        return (size / 1048576) >= self.size_in_mb
+        return (size / 1048576) >= self.roll_size_mb

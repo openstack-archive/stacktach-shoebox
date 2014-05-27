@@ -51,7 +51,7 @@ class TestSizeRolling(unittest.TestCase):
     def test_size_rolling(self):
         callback = ArchiveCallback()
 
-        checker = roll_checker.SizeRollChecker(1)
+        checker = roll_checker.SizeRollChecker(roll_size_mb=1)
         manager = roll_manager.WritingRollManager("test_%Y_%m_%d_%X_%f.events",
                                                   checker,
                                                   TEMPDIR,

@@ -37,11 +37,11 @@ class CallbackList(ArchiveCallback):
     def __init__(self, **kwargs):
         super(CallbackList, self).__init__(**kwargs)
         self.callbacks = []
-        self.config = kwargs.get('config', {})
-        callback_list_str = self.config.get('callback_list', "")
-        callback_list = [x.strip() for x in callback_list_str.split(",")]
-        self.callback_list = [simport.load(c) for c in callback_list]
-
+        self.config = kwargs
+        callback_str = self.config.get('callback_list', "")
+        callback_str_list = [x.strip() for x in callback_str.split(",")]
+        self.callbacks = [simport.load(c)(**self.config)
+                            for c in callback_str_list]
     # TODO(Sandy): Need some exception handling around these.
     # The failure of one shouldn't stop processing.
     def on_open(self, filename):
@@ -53,7 +53,7 @@ class CallbackList(ArchiveCallback):
             c.on_close(filename)
 
 
-class ChangeExtensionCallback(object):
+class ChangeExtensionCallback(ArchiveCallback):
     """filename.dat becomes filename.dat.done"""
     def __init__(self, **kwargs):
         super(ChangeExtensionCallback, self).__init__(**kwargs)
@@ -63,7 +63,7 @@ class ChangeExtensionCallback(object):
         os.rename(filename, "%s.%s" % (filename, self.new_extension))
 
 
-class MoveFileCallback(object):
+class MoveFileCallback(ArchiveCallback):
     def __init__(self, **kwargs):
         super(MoveFileCallback, self).__init__(**kwargs)
         self.destination_folder = kwargs.get('destination_folder', '.')
