@@ -22,16 +22,20 @@ Roll Managers also take care of filename creation, compression
 of completed archives and transfer of archive files to remote
 storage locations.
 
-The RollChecker's have a reference to the current Archive so
+The RollCheckers have a reference to the current Archive so
 they can ask file-related questions (like "how big are you?")
 
 You can register callbacks with the RollManager for notifications
 on when new Archive files are opened or closed.
 
+Important Note! The Callback handlers and the RollCheckers take
+kwargs in the constructor since they can be dynamically loaded as
+plugins. So, make sure you provide named parameters to the constructors. 
+
 Usage:
 
     # Make a roll checker of whatever strategy you choose.
-    checker = roll_checker.SizeRollChecker(100)  # 100mb files
+    checker = roll_checker.SizeRollChecker(roll_size_mb=100)  # 100mb files
 
     # Make a roll manager for reading or writing. 
     # Give the filename template and the checker. 
