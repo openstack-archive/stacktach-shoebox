@@ -64,7 +64,7 @@ class TestSizeRolling(unittest.TestCase):
             events = g.generate(now)
             if events:
                 for event in events:
-                    metadata = {'event': event['event'],
+                    metadata = {'event': event['event_type'],
                                 'request_id': event['request_id'],
                                 'generated': str(event['when']),
                                 'uuid': event['uuid'],
