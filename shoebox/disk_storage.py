@@ -83,6 +83,11 @@ class Version1(Version0):
         self.header_schema = "iii"
         self.header_size = struct.calcsize(self.header_schema)
 
+    def _encode(self, s):
+         if isinstance(s, unicode):
+            return s.encode('utf-8')
+         return s
+
     def pack(self, notification, metadata):
         nsize = len(notification)
         raw_block_schema = "i%ds" % nsize
@@ -91,12 +96,16 @@ class Version1(Version0):
         metadata_items = ["i"] # appended with N "%ds"'s
         metadata_values = [len(metadata) * 4]  # [n]=key, [n+1]=value
         for key, value in metadata.iteritems():
+            key = self._encode(key)
+            value = self._encode(value)
             metadata_items.append("i")
             metadata_items.append("i")
             metadata_values.append(len(key))
             metadata_values.append(len(value))
 
         for key, value in metadata.iteritems():
+            key = self._encode(key)
+            value = self._encode(value)
             metadata_items.append("%ds" % len(key))
             metadata_values.append(key)
             metadata_items.append("%ds" % len(value))
