@@ -111,6 +111,8 @@ class SwiftUploadCallback(ArchiveCallback):
 
         self.cloud_files = pyrax.cloudfiles
 
+        self.cloud_files.create_container(self.container)
+
     def on_close(self, filename):
         checksum = pyrax.utils.get_checksum(filename)
         # Blocking call ...
