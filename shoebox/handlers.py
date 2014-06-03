@@ -17,7 +17,13 @@ import os
 import os.path
 import shutil
 
+import pyrax
+
 import simport
+
+
+class MissingArgument(Exception):
+    pass
 
 
 class ArchiveCallback(object):
@@ -29,8 +35,12 @@ class ArchiveCallback(object):
         pass
 
     def on_close(self, filename):
-        """Called when an Archive is closed."""
-        pass
+        """Called when an Archive is closed.
+           If you move/change the file/name return the
+           new location so subsequent callbacks will
+           have the right location.
+        """
+        return filename
 
 
 class CallbackList(ArchiveCallback):
@@ -50,7 +60,7 @@ class CallbackList(ArchiveCallback):
 
     def on_close(self, filename):
         for c in self.callbacks:
-            c.on_close(filename)
+            filename = c.on_close(filename)
 
 
 class ChangeExtensionCallback(ArchiveCallback):
@@ -60,7 +70,9 @@ class ChangeExtensionCallback(ArchiveCallback):
         self.new_extension = kwargs.get('new_extension', '.done')
 
     def on_close(self, filename):
-        os.rename(filename, "%s.%s" % (filename, self.new_extension))
+        new = "%s.%s" % (filename, self.new_extension)
+        os.rename(filename, new)
+        return new
 
 
 class MoveFileCallback(ArchiveCallback):
@@ -71,3 +83,37 @@ class MoveFileCallback(ArchiveCallback):
     def on_close(self, filename):
         """Move this file to destination folder."""
         shutil.move(filename, self.destination_folder)
+        path, fn = os.path.split(filename)
+        return os.path.join(self.destination_folder, fn)
+
+
+class DeleteFileCallback(ArchiveCallback):
+    def on_close(self, filename):
+        """Delete this file."""
+        os.remove(filename)
+        return None
+
+
+class SwiftUploadCallback(ArchiveCallback):
+    def __init__(self, **kwargs):
+        super(SwiftUploadCallback, self).__init__(**kwargs)
+        self.credentials_file = kwargs.get('credentials_file')
+        if not self.credentials_file:
+            raise MissingArgument("No credentials_file defined.")
+
+        self.container = kwargs.get('container', 'shoebox')
+        self.auth_method = kwargs.get('auth_method', 'rackspace')
+        self.region = kwargs.get('region', 'DFW')
+
+        pyrax.set_setting('identity_type', self.auth_method)
+        pyrax.set_setting("region", self.region)
+        pyrax.set_credential_file(self.credentials_file)
+
+        self.cloud_files = pyrax.cloudfiles
+
+    def on_close(self, filename):
+        checksum = pyrax.utils.get_checksum(filename)
+        # Blocking call ...
+        obj = self.cloud_files.upload_file(self.container, filename,
+                                           etag=checksum)
+        return filename
