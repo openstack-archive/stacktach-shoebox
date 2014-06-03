@@ -90,7 +90,7 @@ class MoveFileCallback(ArchiveCallback):
 class DeleteFileCallback(ArchiveCallback):
     def on_close(self, filename):
         """Delete this file."""
-        os.delete(filename)
+        os.remove(filename)
         return None
 
 
@@ -102,7 +102,11 @@ class SwiftUploadCallback(ArchiveCallback):
             raise MissingArgument("No credentials_file defined.")
 
         self.container = kwargs.get('container', 'shoebox')
+        self.auth_method = kwargs.get('auth_method', 'rackspace')
+        self.region = kwargs.get('region', 'DFW')
 
+        pyrax.set_setting('identity_type', self.auth_method)
+        pyrax.set_setting("region", self.region)
         pyrax.set_credential_file(self.credentials_file)
 
         self.cloud_files = pyrax.cloudfiles
@@ -111,5 +115,5 @@ class SwiftUploadCallback(ArchiveCallback):
         checksum = pyrax.utils.get_checksum(filename)
         # Blocking call ...
         obj = self.cloud_files.upload_file(self.container, filename,
-                                           etag=chksum)
+                                           etag=checksum)
         return filename
