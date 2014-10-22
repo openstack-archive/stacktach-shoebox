@@ -27,8 +27,8 @@ class TestRollManager(unittest.TestCase):
         x.active_archive = mock.Mock()
         x.active_filename = "foo"
         x.close()
-        self.assertIsNone(x.active_archive)
-        self.assertIsNone(x.active_filename)
+        self.assertTrue(x.active_archive is None)
+        self.assertTrue(x.active_filename is None)
         self.assertTrue(callback.on_close.called)
 
 

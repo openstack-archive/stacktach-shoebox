@@ -57,7 +57,7 @@ class TestSizeRolling(unittest.TestCase):
                                                   TEMPDIR,
                                                   archive_callback=callback)
 
-        g = notigen.EventGenerator(6000)
+        g = notigen.EventGenerator("test/integration/templates")
         entries = []
         now = datetime.datetime.utcnow()
         while len(entries) < 10000:
@@ -65,9 +65,10 @@ class TestSizeRolling(unittest.TestCase):
             if events:
                 for event in events:
                     metadata = {'event': event['event_type'],
-                                'request_id': event['request_id'],
-                                'generated': str(event['when']),
-                                'uuid': event['uuid'],
+                                'request_id': event['_context_request_id'],
+                                'generated': str(event['timestamp']),
+                                'uuid': event.get('payload', {}
+                                                  ).get("instance_id", ""),
                                 }
                     json_event = json.dumps(event,
                                         cls=notification_utils.DateTimeEncoder)
