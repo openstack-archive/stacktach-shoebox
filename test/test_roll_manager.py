@@ -92,3 +92,25 @@ class TestWriting(unittest.TestCase):
         arc = x.get_active_archive()
         self.assertEqual(10, len(arc.data))
         self.assertEqual(({"index": "0"}, "payload_0"), arc.data[0])
+
+
+class TestHDFSRollManager(unittest.TestCase):
+    def test_bad_directory(self):
+        try:
+            roll_manager.WritingHDFSRollManager("x", "bad_directory")
+            self.fail("Should raise BadWorkingDirectory")
+        except roll_manager.BadWorkingDirectory as e:
+            pass
+
+
+    def test_make_filename(self):
+        now = datetime.datetime(day=1, month=2, year=2014,
+                                hour=10, minute=11, second=12)
+        with mock.patch.object(notification_utils, "now") as dt:
+            with mock.patch.object(notification_utils, "dt_to_decimal") as td:
+                td.return_value = 123.45
+                dt.return_value = now
+                x = roll_manager.WritingHDFSRollManager(
+                                        "%Y%m%d [[TIMESTAMP]] [[CRC]].foo")
+                fn = x._make_filename("mycrc")
+                self.assertEqual("./20140201_123.45_mycrc.foo", fn)

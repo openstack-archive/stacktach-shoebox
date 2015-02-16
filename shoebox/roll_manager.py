@@ -14,6 +14,9 @@
 # limitations under the License.
 
 import fnmatch
+import gzip
+import hashlib
+import json
 import os
 import os.path
 
@@ -28,6 +31,10 @@ class NoMoreFiles(Exception):
 
 
 class NoValidFile(Exception):
+    pass
+
+
+class BadWorkingDirectory(Exception):
     pass
 
 
@@ -131,3 +138,34 @@ class WritingRollManager(RollManager):
 
     def _should_roll_archive(self):
         return self.roll_checker.check(self.active_archive)
+
+
+class WritingHDFSRollManager(object):
+    """No archiver. No roll checker. Just open a connection
+       to HDFS machine and scp files across as we get them."""
+    def __init__(self, filename_template, directory="."):
+        self.filename_template = filename_template
+        self.directory = directory
+        if not os.path.isdir(self.directory):
+            raise BadWorkingDirectory("Directory '%s' does not exist" %
+                                      self.directory)
+
+    def _make_filename(self, crc):
+        now = notification_utils.now()
+        dt = str(notification_utils.dt_to_decimal(now))
+        f = now.strftime(self.filename_template)
+        f = f.replace(" ", "_")
+        f = f.replace("/", "_")
+        f = f.replace(":", "_")
+        f = f.replace("[[CRC]]", crc)
+        f = f.replace("[[TIMESTAMP]]", dt)
+        return os.path.join(self.directory, f)
+
+    def write(self, metadata, payload):
+        # Metadata is ignored.
+        j = json.dumps(payload, cls=notification_utils.DateTimeEncoder)
+        crc = hashlib.sha256(j).hexdigest()
+        filename = self._make_filename(crc)
+        f = gzip.open(filename, 'wb')
+        f.write(j)
+        f.close()
