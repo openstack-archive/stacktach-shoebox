@@ -95,14 +95,6 @@ class TestWriting(unittest.TestCase):
 
 
 class TestJSONRollManager(unittest.TestCase):
-    def test_bad_directory(self):
-        try:
-            roll_manager.WritingJSONRollManager("x", directory="bad_directory")
-            self.fail("Should raise BadWorkingDirectory")
-        except roll_manager.BadWorkingDirectory as e:
-            pass
-
-
     def test_make_filename(self):
         now = datetime.datetime(day=1, month=2, year=2014,
                                 hour=10, minute=11, second=12)
@@ -112,12 +104,57 @@ class TestJSONRollManager(unittest.TestCase):
                 dt.return_value = now
                 x = roll_manager.WritingJSONRollManager(
                                         "%Y%m%d [[TIMESTAMP]] [[CRC]].foo")
-                fn = x._make_filename("mycrc")
-                self.assertEqual("./20140201_123.45_mycrc.foo", fn)
+                fn = x._make_filename("mycrc", "foo")
+                self.assertEqual("foo/20140201_123.45_mycrc.foo", fn)
+
+    @mock.patch('os.path.getsize')
+    @mock.patch('os.listdir')
+    @mock.patch('os.path.isfile')
+    def test_should_tar(self, isf, ld, gs):
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+        gs.return_value = 250000
+        ld.return_value = ['a', 'b', 'c']
+        isf.return_value = True
+        rm.roll_size_mb = 1
+        self.assertFalse(rm._should_tar())
+        ld.return_value = ['a', 'b', 'c', 'd', 'e', 'f']
+        self.assertTrue(rm._should_tar())
+
+    @mock.patch('os.listdir')
+    @mock.patch('os.remove')
+    @mock.patch('os.path.isfile')
+    def test_clean_working_directory(self, isf, rem, ld):
+        isf.return_value = True
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+        ld.return_value = ['a', 'b', 'c']
+        rm._clean_working_directory()
+        self.assertEqual(3, rem.call_count)
+
+    @mock.patch('os.listdir')
+    @mock.patch('tarfile.open')
+    @mock.patch('os.path.isfile')
+    def test_tar_directory(self, isf, to, ld):
+        ld.return_value = ['a', 'b', 'c']
+        isf.return_value = True
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+
+        open_name = '%s.open' % roll_manager.__name__
+        with mock.patch(open_name, create=True) as mock_open:
+            mock_open.return_value = mock.MagicMock(spec=file)
+
+            rm._tar_directory()
+            self.assertTrue(to.called)
 
     def test_write(self):
-        x = roll_manager.WritingJSONRollManager("template.foo")
-        with mock.patch.object(roll_manager.gzip, "open") as gz:
-            x.write("metadata", "json_payload")
-
-        self.assertTrue(gz.called_once_with("template.foo", "wb"))
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+        payload = "some big payload"
+        open_name = '%s.open' % roll_manager.__name__
+        with mock.patch(open_name, create=True) as mock_open:
+            with mock.patch.object(rm, "_should_tar") as st:
+                with mock.patch.object(rm, "_tar_directory") as td:
+                    st.return_value = False
+                    mock_open.return_value = mock.MagicMock(spec=file)
+                    rm.write("metadata", payload)
+                    self.assertTrue(mock_open.called_once_with(
+                                                "template.foo", "wb"))
+                    self.assertFalse(td.called)
