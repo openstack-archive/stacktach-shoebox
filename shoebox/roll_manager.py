@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import fnmatch
-import gzip
 import hashlib
 import os
 import os.path
+import tarfile
 
 import notification_utils
 
@@ -62,8 +62,9 @@ class RollManager(object):
 
 class ReadingRollManager(RollManager):
     def __init__(self, filename_template, directory=".",
+                 destination_directory=".",
                  archive_class = archive.ArchiveReader,
-                 archive_callback=None):
+                 archive_callback=None, roll_size_mb=1000):
         super(ReadingRollManager, self).__init__(
                                             filename_template,
                                             directory=directory,
@@ -101,8 +102,9 @@ class ReadingRollManager(RollManager):
 
 class WritingRollManager(RollManager):
     def __init__(self, filename_template, roll_checker, directory=".",
+                 destination_directory=".",
                  archive_class=archive.ArchiveWriter,
-                 archive_callback=None):
+                 archive_callback=None, roll_size_mb=1000):
         super(WritingRollManager, self).__init__(
                                             filename_template,
                                             directory=directory,
@@ -141,16 +143,19 @@ class WritingRollManager(RollManager):
 
 class WritingJSONRollManager(object):
     """No archiver. No roll checker. Just write the file locally.
+       Once the working_directory gets big enough, the files are
+       .tar.gz'ed into the destination_directory. Then
+       the working_directory is erased.
        Expects an external tool like rsync to move the file.
        A SHA-256 of the payload may be included in the filename."""
     def __init__(self, *args, **kwargs):
         self.filename_template = args[0]
         self.directory = kwargs.get('directory', '.')
-        if not os.path.isdir(self.directory):
-            raise BadWorkingDirectory("Directory '%s' does not exist" %
-                                      self.directory)
+        self.destination_directory = kwargs.get('destination_directory', '.')
+        self.roll_size_mb = int(kwargs.get('roll_size_mb', 1000))
+        self.check_delay = 0  # Only check directory size every N events.
 
-    def _make_filename(self, crc):
+    def _make_filename(self, crc, prefix):
         now = notification_utils.now()
         dt = str(notification_utils.dt_to_decimal(now))
         f = now.strftime(self.filename_template)
@@ -159,12 +164,60 @@ class WritingJSONRollManager(object):
         f = f.replace(":", "_")
         f = f.replace("[[CRC]]", crc)
         f = f.replace("[[TIMESTAMP]]", dt)
-        return os.path.join(self.directory, f)
+        return os.path.join(prefix, f)
+
+    def _should_tar(self):
+        size = 0
+        for f in os.listdir(self.directory):
+            full = os.path.join(self.directory, f)
+            if os.path.isfile(full):
+                size += os.path.getsize(full)
+
+        return (size / 1048576) >= self.roll_size_mb
+
+    def _tar_directory(self):
+        # tar all the files in working directory into an archive
+        # in destination_directory.
+        crc = "archive"
+        filename = self._make_filename(crc, self.destination_directory) + ".tar.gz"
+
+        # No contextmgr for tarfile in 2.6 :(
+        tar = tarfile.open(filename, "w:gz")
+        for f in os.listdir(self.directory):
+            full = os.path.join(self.directory, f)
+            if os.path.isfile(full):
+                tar.add(full)
+        tar.close()
+
+    def _clean_working_directory(self):
+        for f in os.listdir(self.directory):
+            full = os.path.join(self.directory, f)
+            if os.path.isfile(full):
+                os.remove(full)
+
+    def _delay_check(self):
+        self.check_delay += 1
+        if self.check_delay > 250:
+            self.check_delay = 0
+            return False
+        return True
 
     def write(self, metadata, json_payload):
         # Metadata is ignored.
         crc = hashlib.sha256(json_payload).hexdigest()
-        filename = self._make_filename(crc)
-        f = gzip.open(filename, 'wb')
-        f.write(json_payload)
-        f.close()
+        filename = self._make_filename(crc, self.directory)
+        with open(filename, "w") as f:
+            f.write(json_payload)
+
+        if self._delay_check():
+            return
+
+        if not self._should_tar():
+            return
+
+        self._tar_directory()
+        self._clean_working_directory()
+
+
+    def close(self):
+        pass
