@@ -95,7 +95,10 @@ class TestWriting(unittest.TestCase):
 
 
 class TestJSONRollManager(unittest.TestCase):
-    def test_make_filename(self):
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
+    def test_make_filename(self, gds):
+        gds.return_value = 1000
         now = datetime.datetime(day=1, month=2, year=2014,
                                 hour=10, minute=11, second=12)
         with mock.patch.object(notification_utils, "now") as dt:
@@ -110,20 +113,34 @@ class TestJSONRollManager(unittest.TestCase):
     @mock.patch('os.path.getsize')
     @mock.patch('os.listdir')
     @mock.patch('os.path.isfile')
-    def test_should_tar(self, isf, ld, gs):
+    def test_get_directory_size(self, isf, ld, gs):
         rm = roll_manager.WritingJSONRollManager("template.foo")
         gs.return_value = 250000
         ld.return_value = ['a', 'b', 'c']
         isf.return_value = True
-        rm.roll_size_mb = 1
-        self.assertFalse(rm._should_tar())
+        self.assertEqual(250000*3, rm._get_directory_size())
         ld.return_value = ['a', 'b', 'c', 'd', 'e', 'f']
+        self.assertEqual(250000*6, rm._get_directory_size())
+
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
+    def test_should_tar(self, gds):
+        gds.return_value = 1000
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+        rm.directory_size = 9 * 1048576
+        rm.roll_size_mb = 10
+        self.assertFalse(rm._should_tar())
+        rm.directory_size = 10 * 1048576
+        rm.roll_size_mb = 10
         self.assertTrue(rm._should_tar())
 
     @mock.patch('os.listdir')
     @mock.patch('os.remove')
     @mock.patch('os.path.isfile')
-    def test_clean_working_directory(self, isf, rem, ld):
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
+    def test_clean_working_directory(self, gds, isf, rem, ld):
+        gds.return_value = 1000
         isf.return_value = True
         rm = roll_manager.WritingJSONRollManager("template.foo")
         ld.return_value = ['a', 'b', 'c']
@@ -133,9 +150,13 @@ class TestJSONRollManager(unittest.TestCase):
     @mock.patch('os.listdir')
     @mock.patch('tarfile.open')
     @mock.patch('os.path.isfile')
-    def test_tar_directory(self, isf, to, ld):
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
+    def test_tar_directory(self, gds, isf, to, ld):
+        gds.return_value = 1000
         ld.return_value = ['a', 'b', 'c']
         isf.return_value = True
+        gds = 1000
         rm = roll_manager.WritingJSONRollManager("template.foo")
 
         open_name = '%s.open' % roll_manager.__name__
@@ -145,7 +166,10 @@ class TestJSONRollManager(unittest.TestCase):
             rm._tar_directory()
             self.assertTrue(to.called)
 
-    def test_write(self):
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
+    def test_write(self, gds):
+        gds.return_value = 0
         rm = roll_manager.WritingJSONRollManager("template.foo")
         payload = "some big payload"
         open_name = '%s.open' % roll_manager.__name__
@@ -158,3 +182,4 @@ class TestJSONRollManager(unittest.TestCase):
                     self.assertTrue(mock_open.called_once_with(
                                                 "template.foo", "wb"))
                     self.assertFalse(td.called)
+                    self.assertEqual(rm.directory_size, len(payload))

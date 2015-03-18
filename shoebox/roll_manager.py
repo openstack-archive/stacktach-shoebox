@@ -153,7 +153,13 @@ class WritingJSONRollManager(object):
         self.directory = kwargs.get('directory', '.')
         self.destination_directory = kwargs.get('destination_directory', '.')
         self.roll_size_mb = int(kwargs.get('roll_size_mb', 1000))
-        self.check_delay = 0  # Only check directory size every N events.
+
+        # Read the directory at the start, but incrementally
+        # update the size as we write more files. Doing a full
+        # disk stat every time is way too expensive.
+        # Of course, this means we are not accounting for
+        # block size.
+        self.directory_size = self._get_directory_size()
 
     def _make_filename(self, crc, prefix):
         now = notification_utils.now()
@@ -167,19 +173,22 @@ class WritingJSONRollManager(object):
         return os.path.join(prefix, f)
 
     def _should_tar(self):
+        return (self.directory_size / 1048576) >= self.roll_size_mb
+
+    def _get_directory_size(self):
         size = 0
         for f in os.listdir(self.directory):
             full = os.path.join(self.directory, f)
             if os.path.isfile(full):
                 size += os.path.getsize(full)
-
-        return (size / 1048576) >= self.roll_size_mb
+        return size
 
     def _tar_directory(self):
         # tar all the files in working directory into an archive
         # in destination_directory.
         crc = "archive"
-        filename = self._make_filename(crc, self.destination_directory) + ".tar.gz"
+        filename = self._make_filename(crc, self.destination_directory) + \
+                            ".tar.gz"
 
         # No contextmgr for tarfile in 2.6 :(
         tar = tarfile.open(filename, "w:gz")
@@ -194,13 +203,7 @@ class WritingJSONRollManager(object):
             full = os.path.join(self.directory, f)
             if os.path.isfile(full):
                 os.remove(full)
-
-    def _delay_check(self):
-        self.check_delay += 1
-        if self.check_delay > 250:
-            self.check_delay = 0
-            return False
-        return True
+            self.directory_size = self._get_directory_size()
 
     def write(self, metadata, json_payload):
         # Metadata is ignored.
@@ -209,15 +212,13 @@ class WritingJSONRollManager(object):
         with open(filename, "w") as f:
             f.write(json_payload)
 
-        if self._delay_check():
-            return
+        self.directory_size += len(json_payload)
 
         if not self._should_tar():
             return
 
         self._tar_directory()
         self._clean_working_directory()
-
 
     def close(self):
         pass
