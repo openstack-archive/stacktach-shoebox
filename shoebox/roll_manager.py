@@ -203,7 +203,7 @@ class WritingJSONRollManager(object):
             full = os.path.join(self.directory, f)
             if os.path.isfile(full):
                 os.remove(full)
-            self.directory_size = self._get_directory_size()
+        self.directory_size = self._get_directory_size()
 
     def write(self, metadata, json_payload):
         # Metadata is ignored.
