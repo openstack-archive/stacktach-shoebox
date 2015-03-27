@@ -1,5 +1,4 @@
 notigen
 notification_utils
-pyrax
 python-dateutil
 simport >= 0.0.dev0

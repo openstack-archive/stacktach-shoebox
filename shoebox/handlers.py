@@ -17,8 +17,6 @@ import os
 import os.path
 import shutil
 
-import pyrax
-
 import simport
 
 
@@ -92,30 +90,3 @@ class DeleteFileCallback(ArchiveCallback):
         """Delete this file."""
         os.remove(filename)
         return None
-
-
-class SwiftUploadCallback(ArchiveCallback):
-    def __init__(self, **kwargs):
-        super(SwiftUploadCallback, self).__init__(**kwargs)
-        self.credentials_file = kwargs.get('credentials_file')
-        if not self.credentials_file:
-            raise MissingArgument("No credentials_file defined.")
-
-        self.container = kwargs.get('container', 'shoebox')
-        self.auth_method = kwargs.get('auth_method', 'rackspace')
-        self.region = kwargs.get('region', 'DFW')
-
-        pyrax.set_setting('identity_type', self.auth_method)
-        pyrax.set_setting("region", self.region)
-        pyrax.set_credential_file(self.credentials_file)
-
-        self.cloud_files = pyrax.cloudfiles
-
-        self.cloud_files.create_container(self.container)
-
-    def on_close(self, filename):
-        checksum = pyrax.utils.get_checksum(filename)
-        # Blocking call ...
-        obj = self.cloud_files.upload_file(self.container, filename,
-                                           etag=checksum)
-        return filename
