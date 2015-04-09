@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import fnmatch
 import hashlib
 import os
@@ -142,24 +143,38 @@ class WritingRollManager(RollManager):
 
 
 class WritingJSONRollManager(object):
-    """No archiver. No roll checker. Just write the file locally.
-       Once the working_directory gets big enough, the files are
-       .tar.gz'ed into the destination_directory. Then
-       the working_directory is erased.
+    """No archiver. No roll checker. Just write 1 file line per json payload.
+       Once the file  gets big enough, .tar.gz the file and move
+       into the destination_directory.
        Expects an external tool like rsync to move the file.
-       A SHA-256 of the payload may be included in the filename."""
+       A SHA-256 of the payload may be included in the tarball filename."""
     def __init__(self, *args, **kwargs):
         self.filename_template = args[0]
         self.directory = kwargs.get('directory', '.')
         self.destination_directory = kwargs.get('destination_directory', '.')
         self.roll_size_mb = int(kwargs.get('roll_size_mb', 1000))
+        minutes = kwargs.get('roll_minutes', 15)
+        self.roll_after = datetime.timedelta(minutes=minutes)
 
-        # Read the directory at the start, but incrementally
-        # update the size as we write more files. Doing a full
-        # disk stat every time is way too expensive.
-        # Of course, this means we are not accounting for
-        # block size.
-        self.directory_size = self._get_directory_size()
+        # Look in the working directory for any files. Move them to the
+        # destination directory before we start. This implies we
+        # have to make sure multiple workers don't point at the same
+        # working directory.
+        self.handle = None
+        self.size = 0
+        self.start_time = self._get_time()
+
+        self._archive_working_files()
+
+    def _get_time(self):
+        # Broken out for testing ...
+        return datetime.datetime.utcnow()
+
+    def _archive_working_files(self):
+        for f in os.listdir(self.directory):
+            full = os.path.join(self.directory, f)
+            if os.path.isfile(full):
+                self._do_roll(full)
 
     def _make_filename(self, crc, prefix):
         now = notification_utils.now()
@@ -172,53 +187,64 @@ class WritingJSONRollManager(object):
         f = f.replace("[[TIMESTAMP]]", dt)
         return os.path.join(prefix, f)
 
-    def _should_tar(self):
-        return (self.directory_size / 1048576) >= self.roll_size_mb
+    def _should_roll(self, size):
+        return ((size / 1048576) >= self.roll_size_mb or
+                (size > 0 and
+                 self._get_time() >= (self.start_time + self.roll_after)))
 
-    def _get_directory_size(self):
-        size = 0
-        for f in os.listdir(self.directory):
-            full = os.path.join(self.directory, f)
-            if os.path.isfile(full):
-                size += os.path.getsize(full)
-        return size
+    def _get_file_sha(self, filename):
+        block_size=2**20
+        sha256 = hashlib.sha256()
+        # no context manager, just to keep testing simple.
+        f = open(filename, "r")
+        while True:
+            data = f.read(block_size)
+            if not data:
+                break
+            sha256.update(data)
+        f.close()
+        return sha256.hexdigest()
 
-    def _tar_directory(self):
+    def _tar_working_file(self, filename):
         # tar all the files in working directory into an archive
         # in destination_directory.
-        crc = "archive"
-        filename = self._make_filename(crc, self.destination_directory) + \
-                            ".tar.gz"
+        crc = self._get_file_sha(filename)
 
         # No contextmgr for tarfile in 2.6 :(
-        tar = tarfile.open(filename, "w:gz")
-        for f in os.listdir(self.directory):
-            full = os.path.join(self.directory, f)
-            if os.path.isfile(full):
-                tar.add(full)
+        fn = self._make_filename(crc, self.destination_directory) + ".tar.gz"
+        tar = tarfile.open(fn, "w:gz")
+        just_name = os.path.basename(filename)
+        tar.add(filename, arcname=just_name)
         tar.close()
 
-    def _clean_working_directory(self):
-        for f in os.listdir(self.directory):
-            full = os.path.join(self.directory, f)
-            if os.path.isfile(full):
-                os.remove(full)
-        self.directory_size = self._get_directory_size()
+    def _clean_working_directory(self, filename):
+        os.remove(filename)
+        self.size = 0
+
+    def _do_roll(self, filename):
+        self.close()
+        self._tar_working_file(filename)
+        self._clean_working_directory(filename)
 
     def write(self, metadata, json_payload):
         # Metadata is ignored.
-        crc = hashlib.sha256(json_payload).hexdigest()
-        filename = self._make_filename(crc, self.directory)
-        with open(filename, "w") as f:
-            f.write(json_payload)
+        handle = self._get_handle()
+        handle.write("%s\n" % json_payload)
 
-        self.directory_size += len(json_payload)
+        self.size += len(json_payload)
 
-        if not self._should_tar():
-            return
+        if self._should_roll(self.size):
+            self._do_roll(self.filename)
 
-        self._tar_directory()
-        self._clean_working_directory()
+    def _get_handle(self):
+        if not self.handle:
+            self.filename = self._make_filename('[[CRC]]', self.directory)
+            self.handle = open(self.filename, "w")
+            self.start_time = self._get_time()
+
+        return self.handle
 
     def close(self):
-        pass
+        if self.handle:
+            self.handle.close()
+            self.handle = None

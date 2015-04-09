@@ -96,9 +96,8 @@ class TestWriting(unittest.TestCase):
 
 class TestJSONRollManager(unittest.TestCase):
     @mock.patch(
-        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
-    def test_make_filename(self, gds):
-        gds.return_value = 1000
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_make_filename(self, awf):
         now = datetime.datetime(day=1, month=2, year=2014,
                                 hour=10, minute=11, second=12)
         with mock.patch.object(notification_utils, "now") as dt:
@@ -110,76 +109,96 @@ class TestJSONRollManager(unittest.TestCase):
                 fn = x._make_filename("mycrc", "foo")
                 self.assertEqual("foo/20140201_123.45_mycrc.foo", fn)
 
-    @mock.patch('os.path.getsize')
     @mock.patch('os.listdir')
     @mock.patch('os.path.isfile')
-    def test_get_directory_size(self, isf, ld, gs):
+    def test_archive_working_files(self, isf, ld):
         rm = roll_manager.WritingJSONRollManager("template.foo")
-        gs.return_value = 250000
         ld.return_value = ['a', 'b', 'c']
         isf.return_value = True
-        self.assertEqual(250000*3, rm._get_directory_size())
-        ld.return_value = ['a', 'b', 'c', 'd', 'e', 'f']
-        self.assertEqual(250000*6, rm._get_directory_size())
+        with mock.patch.object(rm, "_do_roll") as dr:
+            rm._archive_working_files()
+            self.assertEqual(dr.call_count, 3)
 
     @mock.patch(
-        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
-    def test_should_tar(self, gds):
-        gds.return_value = 1000
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_should_roll(self, awf):
         rm = roll_manager.WritingJSONRollManager("template.foo")
-        rm.directory_size = 9 * 1048576
         rm.roll_size_mb = 10
-        self.assertFalse(rm._should_tar())
-        rm.directory_size = 10 * 1048576
-        rm.roll_size_mb = 10
-        self.assertTrue(rm._should_tar())
+        self.assertFalse(rm._should_roll(9*1048576))
+        self.assertTrue(rm._should_roll(10*1048576))
 
-    @mock.patch('os.listdir')
+        rm = roll_manager.WritingJSONRollManager("template.foo", roll_minutes=10)
+        self.assertFalse(rm._should_roll(0))
+        self.assertFalse(rm._should_roll(1))
+        with mock.patch.object(rm, "_get_time") as gt:
+            gt.return_value = rm.start_time + datetime.timedelta(minutes=11)
+            self.assertTrue(rm._should_roll(1))
+
     @mock.patch('os.remove')
-    @mock.patch('os.path.isfile')
     @mock.patch(
-        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
-    def test_clean_working_directory(self, gds, isf, rem, ld):
-        gds.return_value = 1000
-        isf.return_value = True
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_clean_working_directory(self, awf, rem):
         rm = roll_manager.WritingJSONRollManager("template.foo")
-        ld.return_value = ['a', 'b', 'c']
-        rm._clean_working_directory()
-        self.assertEqual(3, rem.call_count)
+        rm._clean_working_directory("foo")
+        self.assertEqual(1, rem.call_count)
 
-    @mock.patch('os.listdir')
-    @mock.patch('tarfile.open')
-    @mock.patch('os.path.isfile')
     @mock.patch(
-        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
-    def test_tar_directory(self, gds, isf, to, ld):
-        gds.return_value = 1000
-        ld.return_value = ['a', 'b', 'c']
-        isf.return_value = True
-        gds = 1000
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_tar_working_file(self, awf):
         rm = roll_manager.WritingJSONRollManager("template.foo")
 
-        open_name = '%s.open' % roll_manager.__name__
-        with mock.patch(open_name, create=True) as mock_open:
-            mock_open.return_value = mock.MagicMock(spec=file)
-
-            rm._tar_directory()
-            self.assertTrue(to.called)
+        with mock.patch.object(rm, "_get_file_sha") as gfs:
+            gfs.return_value = "aabbcc"
+            with mock.patch.object(roll_manager.tarfile, 'open') as tar:
+                tar.return_value = mock.MagicMock()
+                rm._tar_working_file("foo")
+                self.assertTrue(tar.called)
 
     @mock.patch(
-        "shoebox.roll_manager.WritingJSONRollManager._get_directory_size")
-    def test_write(self, gds):
-        gds.return_value = 0
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_write(self, awf):
         rm = roll_manager.WritingJSONRollManager("template.foo")
         payload = "some big payload"
-        open_name = '%s.open' % roll_manager.__name__
-        with mock.patch(open_name, create=True) as mock_open:
-            with mock.patch.object(rm, "_should_tar") as st:
-                with mock.patch.object(rm, "_tar_directory") as td:
-                    st.return_value = False
-                    mock_open.return_value = mock.MagicMock(spec=file)
+        with mock.patch.object(rm, "_get_handle") as gh:
+            with mock.patch.object(rm, "_should_roll") as sr:
+                with mock.patch.object(rm, "_do_roll") as dr:
+                    sr.return_value = False
+                    gh.return_value = mock.MagicMock()
                     rm.write("metadata", payload)
-                    self.assertTrue(mock_open.called_once_with(
-                                                "template.foo", "wb"))
-                    self.assertFalse(td.called)
-                    self.assertEqual(rm.directory_size, len(payload))
+                    self.assertFalse(dr.called)
+                    self.assertEqual(rm.size, len(payload))
+
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_get_file_sha(self, awf):
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+        with mock.patch.object(roll_manager.hashlib, "sha256") as sha:
+            sha_obj = mock.MagicMock()
+            sha.return_value = sha_obj
+            hexdigest = mock.MagicMock()
+            hexdigest.return_value = "aabbcc"
+            sha_obj.hexdigest = hexdigest
+            open_name = '%s.open' % roll_manager.__name__
+            with mock.patch(open_name, create=True) as mock_open:
+                handle = mock.MagicMock()
+                mock_open.return_value = handle
+                data = mock.MagicMock()
+                handle.read = data
+                data.side_effect = ["a", "b", "c", False]
+                self.assertEqual("aabbcc", rm._get_file_sha('foo'))
+
+    @mock.patch(
+        "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
+    def test_get_handle(self, awf):
+        rm = roll_manager.WritingJSONRollManager("template.foo")
+        rm.handle = "abc"
+        self.assertEqual("abc", rm._get_handle())
+
+        with mock.patch.object(rm, "_make_filename") as mf:
+            mf.return_value = "foo"
+            open_name = '%s.open' % roll_manager.__name__
+            with mock.patch(open_name, create=True) as mock_open:
+                handle = mock.MagicMock()
+                mock_open.return_value = handle
+                rm.handle = None
+                self.assertEqual(handle, rm._get_handle())
