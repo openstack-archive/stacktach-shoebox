@@ -15,10 +15,10 @@
 
 import datetime
 import fnmatch
+import gzip
 import hashlib
 import os
 import os.path
-import tarfile
 
 import notification_utils
 
@@ -144,16 +144,16 @@ class WritingRollManager(RollManager):
 
 class WritingJSONRollManager(object):
     """No archiver. No roll checker. Just write 1 file line per json payload.
-       Once the file  gets big enough, .tar.gz the file and move
+       Once the file gets big enough, gzip the file and move
        into the destination_directory.
        Expects an external tool like rsync to move the file.
-       A SHA-256 of the payload may be included in the tarball filename."""
+       A SHA-256 of the payload may be included in the archive filename."""
     def __init__(self, *args, **kwargs):
         self.filename_template = args[0]
         self.directory = kwargs.get('directory', '.')
         self.destination_directory = kwargs.get('destination_directory', '.')
         self.roll_size_mb = int(kwargs.get('roll_size_mb', 1000))
-        minutes = kwargs.get('roll_minutes', 15)
+        minutes = kwargs.get('roll_minutes', 60)
         self.roll_after = datetime.timedelta(minutes=minutes)
 
         # Look in the working directory for any files. Move them to the
@@ -205,17 +205,16 @@ class WritingJSONRollManager(object):
         f.close()
         return sha256.hexdigest()
 
-    def _tar_working_file(self, filename):
-        # tar all the files in working directory into an archive
-        # in destination_directory.
+    def _gzip_working_file(self, filename):
+        # gzip the working file in the destination_directory.
         crc = self._get_file_sha(filename)
 
-        # No contextmgr for tarfile in 2.6 :(
-        fn = self._make_filename(crc, self.destination_directory) + ".tar.gz"
-        tar = tarfile.open(fn, "w:gz")
-        just_name = os.path.basename(filename)
-        tar.add(filename, arcname=just_name)
-        tar.close()
+        fn = self._make_filename(crc, self.destination_directory) + ".gz"
+
+        with open(filename, 'r') as file_in:
+            file_out = gzip.open(fn, 'wb')
+            file_out.writelines(file_in)
+            file_out.close()
 
     def _clean_working_directory(self, filename):
         os.remove(filename)
@@ -223,7 +222,7 @@ class WritingJSONRollManager(object):
 
     def _do_roll(self, filename):
         self.close()
-        self._tar_working_file(filename)
+        self._gzip_working_file(filename)
         self._clean_working_directory(filename)
 
     def write(self, metadata, json_payload):

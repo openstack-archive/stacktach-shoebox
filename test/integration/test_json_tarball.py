@@ -1,10 +1,10 @@
 import datetime
+import gzip
 import hashlib
 import json
 import mock
 import os
 import shutil
-import tarfile
 import unittest
 
 import notification_utils
@@ -59,20 +59,14 @@ class TestDirectory(unittest.TestCase):
             if os.path.isfile(full):
                 self.fail("Working directory not empty.")
 
-        # Extract the tarballs ...
+        # Read the gzip files ...
         total = 0
         for f in os.listdir(DESTDIR):
-            tar = tarfile.open(os.path.join(DESTDIR, f), "r:gz")
-            names = tar.getnames()
-            tar.extractall(path=EXTRACTDIR)
-            tar.close()
+            archive = gzip.open(os.path.join(DESTDIR, f), 'rb')
+            file_content = archive.read().split('\n')
+            archive.close()
 
-            for item in names:
-                full = os.path.join(EXTRACTDIR, item)
-                num = 0
-                with open(full, "r") as handle:
-                    for line in handle:
-                        num += 1
+            num = len(file_content) - 1
             total += num
             print "In %s: %d of %d Remaining: %d" % (f, num, actual,
                                                      actual - total)

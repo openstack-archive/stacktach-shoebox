@@ -144,15 +144,20 @@ class TestJSONRollManager(unittest.TestCase):
 
     @mock.patch(
         "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
-    def test_tar_working_file(self, awf):
+    def test_gzip_working_file(self, awf):
         rm = roll_manager.WritingJSONRollManager("template.foo")
 
         with mock.patch.object(rm, "_get_file_sha") as gfs:
             gfs.return_value = "aabbcc"
-            with mock.patch.object(roll_manager.tarfile, 'open') as tar:
-                tar.return_value = mock.MagicMock()
-                rm._tar_working_file("foo")
-                self.assertTrue(tar.called)
+
+            open_name = '%s.open' % roll_manager.__name__
+            with mock.patch(open_name, create=True) as mock_open:
+                handle = mock.MagicMock()
+                mock_open.return_value = handle
+                with mock.patch.object(roll_manager.gzip, 'open') as gzip:
+                    gzip.return_value = mock.MagicMock()
+                    rm._gzip_working_file("foo")
+                    self.assertTrue(gzip.called)
 
     @mock.patch(
         "shoebox.roll_manager.WritingJSONRollManager._archive_working_files")
