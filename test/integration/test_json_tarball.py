@@ -22,7 +22,7 @@ class TestDirectory(unittest.TestCase):
     def setUp(self):
         for d in [TEMPDIR, DESTDIR, EXTRACTDIR]:
             shutil.rmtree(d, ignore_errors=True)
-            os.mkdir(d)
+            os.makedirs(d)
 
     def test_size_rolling(self):
         manager = roll_manager.WritingJSONRollManager(
