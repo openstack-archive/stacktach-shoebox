@@ -64,20 +64,20 @@ class RollManager(object):
 class ReadingRollManager(RollManager):
     def __init__(self, filename_template, directory=".",
                  destination_directory=".",
-                 archive_class = archive.ArchiveReader,
+                 archive_class=archive.ArchiveReader,
                  archive_callback=None, roll_size_mb=1000):
         super(ReadingRollManager, self).__init__(
-                                            filename_template,
-                                            directory=directory,
-                                            archive_callback=archive_callback,
-                                            archive_class=archive_class)
+            filename_template,
+            directory=directory,
+            archive_callback=archive_callback,
+            archive_class=archive_class)
         self.files_to_read = self._get_matching_files(directory,
                                                       filename_template)
 
     def _get_matching_files(self, directory, filename_template):
         files = [os.path.join(directory, f)
-                    for f in os.listdir(self.directory)
-                        if os.path.isfile(os.path.join(directory, f))]
+                 for f in os.listdir(self.directory)
+                 if os.path.isfile(os.path.join(directory, f))]
         return sorted(fnmatch.filter(files, filename_template))
 
     def read(self):
@@ -107,15 +107,17 @@ class WritingRollManager(RollManager):
                  archive_class=archive.ArchiveWriter,
                  archive_callback=None, roll_size_mb=1000):
         super(WritingRollManager, self).__init__(
-                                            filename_template,
-                                            directory=directory,
-                                            archive_callback=archive_callback,
-                                            archive_class=archive_class)
+            filename_template,
+            directory=directory,
+            archive_callback=archive_callback,
+            archive_class=archive_class)
         self.roll_checker = roll_checker
 
     def write(self, metadata, payload):
-        """metadata is string:string dict.
-           payload must be encoded as string.
+        """Write metadata
+
+        metadata is string:string dict.
+        payload must be encoded as string.
         """
         a = self.get_active_archive()
         a.write(metadata, payload)
@@ -143,11 +145,15 @@ class WritingRollManager(RollManager):
 
 
 class WritingJSONRollManager(object):
-    """No archiver. No roll checker. Just write 1 file line per json payload.
-       Once the file gets big enough, gzip the file and move
-       into the destination_directory.
-       Expects an external tool like rsync to move the file.
-       A SHA-256 of the payload may be included in the archive filename."""
+    """Simple event archival.
+
+    No archiver. No roll checker. Just write 1 file line per json payload.
+    Once the file gets big enough, gzip the file and move
+    into the destination_directory.
+    Expects an external tool like rsync to move the file.
+    A SHA-256 of the payload may be included in the archive filename.
+    """
+
     def __init__(self, *args, **kwargs):
         self.filename_template = args[0]
         self.directory = kwargs.get('directory', '.')
@@ -193,7 +199,7 @@ class WritingJSONRollManager(object):
                  self._get_time() >= (self.start_time + self.roll_after)))
 
     def _get_file_sha(self, filename):
-        block_size=2**20
+        block_size = 2 ** 20
         sha256 = hashlib.sha256()
         # no context manager, just to keep testing simple.
         f = open(filename, "r")

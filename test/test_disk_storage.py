@@ -1,20 +1,32 @@
-import datetime
-import mock
+# Copyright (c) 2014 Dark Secret Software Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
+import mock
 import struct
 import unittest
-
-import dateutil.tz
 
 from shoebox import disk_storage
 
 
 class TestVersion0(unittest.TestCase):
     def setUp(self):
-       self.v0 = disk_storage.Version0()
+        self.v0 = disk_storage.Version0()
 
     def test_make_preamble(self):
-       self.assertEqual(6, len(self.v0.make_preamble(99)))
+        self.assertEqual(6, len(self.v0.make_preamble(99)))
 
     def test_load_preamble_bad_bor(self):
         file_handle = mock.Mock()
@@ -24,14 +36,16 @@ class TestVersion0(unittest.TestCase):
 
     def test_load_preamble(self):
         file_handle = mock.Mock()
-        file_handle.read.return_value = struct.pack("ih",
-                          disk_storage.BOR_MAGIC_NUMBER, 99)
+        file_handle.read.return_value = struct.pack(
+            "ih",
+            disk_storage.BOR_MAGIC_NUMBER,
+            99)
         self.assertEqual(99, self.v0.load_preamble(file_handle))
 
 
 class TestVersion1(unittest.TestCase):
     def setUp(self):
-       self.v1 = disk_storage.Version1()
+        self.v1 = disk_storage.Version1()
 
     def test_no_metadata(self):
         metadata = {}
@@ -76,7 +90,7 @@ class TestVersion1(unittest.TestCase):
         blocks = blocks[1:]  # Remove preamble
 
         # break the EOR marker
-        print len(blocks[0])
+        print(len(blocks[0]))
         newblock = blocks[0][:8] + '\x00\x00\x01\x02'
         blocks = list(blocks)
         blocks[0] = newblock
@@ -110,8 +124,10 @@ class TestHelpers(unittest.TestCase):
 
     def test_unpack_notification(self):
         file_handle = mock.Mock()
-        file_handle.read.return_value = struct.pack("ih",
-                          disk_storage.BOR_MAGIC_NUMBER, 99)
+        file_handle.read.return_value = struct.pack(
+            "ih",
+            disk_storage.BOR_MAGIC_NUMBER,
+            99)
 
         with mock.patch('shoebox.disk_storage.get_version_handler') as h:
             fake_handler = mock.Mock()

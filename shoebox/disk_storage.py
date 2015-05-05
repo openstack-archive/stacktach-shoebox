@@ -1,6 +1,18 @@
-import calendar
-import datetime
-import json
+# Copyright (c) 2014 Dark Secret Software Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import struct
 
 
@@ -61,7 +73,7 @@ class Version1(Version0):
     # *s = raw data
 
     # EXAMPLE
-    #--------
+    # --------
     # With above Event and Metadata
     #
     # Header schema: "iii"
@@ -84,16 +96,16 @@ class Version1(Version0):
         self.header_size = struct.calcsize(self.header_schema)
 
     def _encode(self, s):
-         if isinstance(s, unicode):
+        if isinstance(s, unicode):
             return s.encode('utf-8')
-         return s
+        return s
 
     def pack(self, notification, metadata):
         nsize = len(notification)
         raw_block_schema = "i%ds" % nsize
         raw_block = struct.pack(raw_block_schema, nsize, notification)
 
-        metadata_items = ["i"] # appended with N "%ds"'s
+        metadata_items = ["i"]  # appended with N "%ds"'s
         metadata_values = [len(metadata) * 4]  # [n]=key, [n+1]=value
         for key, value in metadata.iteritems():
             key = self._encode(key)
@@ -142,7 +154,7 @@ class Version1(Version0):
         offset += struct.calcsize(lengths_schema)
         key_values = struct.unpack_from(key_value_schema, metadata_bytes,
                                         offset=offset)
-        metadata = dict((key_values[n], key_values[n+1])
+        metadata = dict((key_values[n], key_values[n + 1])
                         for n in range(len(key_values))[::2])
 
         raw = file_handle.read(header[1])
@@ -155,6 +167,7 @@ class Version1(Version0):
 
 VERSIONS = {1: Version1()}
 CURRENT_VERSION = 1
+
 
 def get_version_handler(version=CURRENT_VERSION):
     global VERSIONS

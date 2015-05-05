@@ -1,8 +1,21 @@
+# Copyright (c) 2014 Dark Secret Software Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import datetime
 import gzip
-import hashlib
 import json
-import mock
 import os
 import shutil
 import unittest
@@ -26,10 +39,10 @@ class TestDirectory(unittest.TestCase):
 
     def test_size_rolling(self):
         manager = roll_manager.WritingJSONRollManager(
-                                    "%Y_%m_%d_%X_%f_[[CRC]].event",
-                                    directory=TEMPDIR,
-                                    destination_directory=DESTDIR,
-                                    roll_size_mb=10)
+            "%Y_%m_%d_%X_%f_[[CRC]].event",
+            directory=TEMPDIR,
+            destination_directory=DESTDIR,
+            roll_size_mb=10)
 
         g = notigen.EventGenerator("test/integration/templates")
         entries = {}
@@ -39,8 +52,9 @@ class TestDirectory(unittest.TestCase):
             if events:
                 for event in events:
                     metadata = {}
-                    json_event = json.dumps(event,
-                                        cls=notification_utils.DateTimeEncoder)
+                    json_event = json.dumps(
+                        event,
+                        cls=notification_utils.DateTimeEncoder)
                     manager.write(metadata, json_event)
                     msg_id = event['message_id']
                     entries[msg_id] = json_event
@@ -49,7 +63,7 @@ class TestDirectory(unittest.TestCase):
         manager.close()
         manager._archive_working_files()
 
-        print "Starting entries:", len(entries)
+        print("Starting entries:", len(entries))
 
         actual = len(entries)
 
@@ -68,8 +82,8 @@ class TestDirectory(unittest.TestCase):
 
             num = len(file_content) - 1
             total += num
-            print "In %s: %d of %d Remaining: %d" % (f, num, actual,
-                                                     actual - total)
+            print("In %s: %d of %d Remaining: %d"
+                  % (f, num, actual, actual - total))
 
         if actual != total:
             raise Exception("Num generated != actual")

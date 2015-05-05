@@ -30,7 +30,9 @@ class Archive(object):
 
 class ArchiveWriter(Archive):
     """The active Archive for appending.
+
     """
+
     def __init__(self, filename):
         super(ArchiveWriter, self).__init__(filename)
         self._open_file(filename)
@@ -47,7 +49,9 @@ class ArchiveWriter(Archive):
 
 class ArchiveReader(Archive):
     """The active Archive for consuming.
+
     """
+
     def __init__(self, filename):
         super(ArchiveReader, self).__init__(filename)
         self._open_file(filename)

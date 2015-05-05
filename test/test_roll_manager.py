@@ -1,10 +1,23 @@
+# Copyright (c) 2014 Dark Secret Software Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import datetime
-import mock
-import os
 import unittest
 
+import mock
 import notification_utils
-
 from shoebox import archive
 from shoebox import roll_checker
 from shoebox import roll_manager
@@ -53,7 +66,7 @@ class TestWritingRollManager(unittest.TestCase):
 
     def test_correct_archiver(self):
         x = roll_manager.WritingRollManager("foo", None)
-        print x.archive_class
+        print(x.archive_class)
         self.assertEqual(x.archive_class, archive.ArchiveWriter)
 
     def test_get_active_archive(self):
@@ -63,8 +76,8 @@ class TestWritingRollManager(unittest.TestCase):
         x = roll_manager.WritingRollManager(filename_template, checker,
                                             archive_callback=callback,
                                             archive_class=FakeArchive)
-        with mock.patch("shoebox.archive.ArchiveWriter._open_file") as of:
-            arc = x.get_active_archive()
+        with mock.patch("shoebox.archive.ArchiveWriter._open_file"):
+            x.get_active_archive()
             self.assertTrue(checker.start.called)
             self.assertTrue(callback.on_open.called)
 
@@ -105,7 +118,7 @@ class TestJSONRollManager(unittest.TestCase):
                 td.return_value = 123.45
                 dt.return_value = now
                 x = roll_manager.WritingJSONRollManager(
-                                        "%Y%m%d [[TIMESTAMP]] [[CRC]].foo")
+                    "%Y%m%d [[TIMESTAMP]] [[CRC]].foo")
                 fn = x._make_filename("mycrc", "foo")
                 self.assertEqual("foo/20140201_123.45_mycrc.foo", fn)
 
@@ -124,10 +137,11 @@ class TestJSONRollManager(unittest.TestCase):
     def test_should_roll(self, awf):
         rm = roll_manager.WritingJSONRollManager("template.foo")
         rm.roll_size_mb = 10
-        self.assertFalse(rm._should_roll(9*1048576))
-        self.assertTrue(rm._should_roll(10*1048576))
+        self.assertFalse(rm._should_roll(9 * 1048576))
+        self.assertTrue(rm._should_roll(10 * 1048576))
 
-        rm = roll_manager.WritingJSONRollManager("template.foo", roll_minutes=10)
+        rm = roll_manager.WritingJSONRollManager("template.foo",
+                                                 roll_minutes=10)
         self.assertFalse(rm._should_roll(0))
         self.assertFalse(rm._should_roll(1))
         with mock.patch.object(rm, "_get_time") as gt:

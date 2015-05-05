@@ -1,6 +1,20 @@
+# Copyright (c) 2014 Dark Secret Software Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import datetime
 import json
-import mock
 import os
 import shutil
 import unittest
@@ -8,7 +22,6 @@ import unittest
 import notification_utils
 import notigen
 
-from shoebox import disk_storage
 from shoebox import roll_checker
 from shoebox import roll_manager
 
@@ -64,14 +77,16 @@ class TestSizeRolling(unittest.TestCase):
             events = g.generate(now)
             if events:
                 for event in events:
-                    metadata = {'event': event['event_type'],
-                                'request_id': event['_context_request_id'],
-                                'generated': str(event['timestamp']),
-                                'uuid': event.get('payload', {}
-                                                  ).get("instance_id", ""),
-                                }
-                    json_event = json.dumps(event,
-                                        cls=notification_utils.DateTimeEncoder)
+                    metadata = {
+                        'event': event['event_type'],
+                        'request_id': event['_context_request_id'],
+                        'generated': str(event['timestamp']),
+                        'uuid': event.get('payload', {}).get(
+                            "instance_id", ""),
+                    }
+                    json_event = json.dumps(
+                        event,
+                        cls=notification_utils.DateTimeEncoder)
                     manager.write(metadata, json_event)
                     entries.append((metadata, json_event))
 

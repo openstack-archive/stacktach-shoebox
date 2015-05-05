@@ -26,6 +26,7 @@ pip-log.txt
 .coverage
 .tox
 nosetests.xml
+test_temp/*
 
 # Translations
 *.mo
@@ -34,3 +35,8 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# IDE Project Files
+*.project
+*.pydev*
+*.idea

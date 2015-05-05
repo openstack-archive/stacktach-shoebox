@@ -34,6 +34,7 @@ class ArchiveCallback(object):
 
     def on_close(self, filename):
         """Called when an Archive is closed.
+
            If you move/change the file/name return the
            new location so subsequent callbacks will
            have the right location.
@@ -49,9 +50,11 @@ class CallbackList(ArchiveCallback):
         callback_str = self.config.get('callback_list', "")
         callback_str_list = [x.strip() for x in callback_str.split(",")]
         self.callbacks = [simport.load(c)(**self.config)
-                            for c in callback_str_list]
+                          for c in callback_str_list]
+
     # TODO(Sandy): Need some exception handling around these.
     # The failure of one shouldn't stop processing.
+
     def on_open(self, filename):
         for c in self.callbacks:
             c.on_open(filename)
@@ -63,6 +66,7 @@ class CallbackList(ArchiveCallback):
 
 class ChangeExtensionCallback(ArchiveCallback):
     """filename.dat becomes filename.dat.done"""
+
     def __init__(self, **kwargs):
         super(ChangeExtensionCallback, self).__init__(**kwargs)
         self.new_extension = kwargs.get('new_extension', '.done')
