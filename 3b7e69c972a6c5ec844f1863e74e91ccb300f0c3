@@ -1,0 +1,10 @@
+Verified+2: Jenkins
+Code-Review+1: Sandy Walsh <sandy.walsh@rackspace.com>
+Workflow+1: Sandy Walsh <sandy.walsh@rackspace.com>
+Code-Review+2: Levi Blackstone <levi.blackstone@rackspace.com>
+Workflow+1: Levi Blackstone <levi.blackstone@rackspace.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 10 Nov 2015 15:55:45 +0000
+Reviewed-on: https://review.openstack.org/180126
+Project: openstack/stacktach-shoebox
+Branch: refs/heads/master
