@@ -1,5 +1,0 @@
-hacking>=0.10.0,<0.11
-notigen
-notification_utils
-python-dateutil
-simport >= 0.0.dev0
